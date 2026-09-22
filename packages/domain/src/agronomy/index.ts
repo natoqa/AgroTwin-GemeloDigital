@@ -7,6 +7,33 @@ export type {
 } from './Coefficients.js';
 export { POTATO_COEFFICIENTS } from './potato.js';
 export {
+  CROP_STAGES,
+  KC_KEYS,
+  STAGE_LENGTH_KEYS,
+  cropCoefficientOnDay,
+  cropStageOnDay,
+  kcValuesOf,
+  stageLengthsOf,
+} from './CropStage.js';
+export type { CropStage, KcValues, StageLengths } from './CropStage.js';
+export {
+  advanceWaterBalance,
+  cropEvapotranspiration,
+  readilyAvailableWater,
+  totalAvailableWater,
+  waterStressCoefficient,
+} from './WaterBalance.js';
+export type { WaterBalanceDay, WaterBalanceResult } from './WaterBalance.js';
+export {
+  FIRST_SPRAY_SEVERITY_TOTAL,
+  MAX_FAVOURABLE_TEMPERATURE,
+  MIN_FAVOURABLE_TEMPERATURE,
+  accumulateBlightRisk,
+  dailySeverityValue,
+  lateBlightRiskFor,
+} from './LateBlightRisk.js';
+export type { BlightRisk, SeverityValue, WetPeriod } from './LateBlightRisk.js';
+export {
   SOLAR_CONSTANT,
   extraterrestrialRadiation,
   inverseRelativeDistance,

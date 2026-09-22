@@ -101,6 +101,24 @@
       "unit": "degreeDay",
       "source": "TODO: verificar fuente",
       "note": "Thermal time from planting to maturity."
+    },
+    "soilFieldCapacity": {
+      "value": 0.32,
+      "unit": "cubicMeterPerCubicMeter",
+      "source": "TODO: verificar fuente",
+      "note": "Provisional: FAO-56 Example 36 uses theta_FC 0.32 for silt, a medium texture. The actual texture of the farmer's plot is unknown, so the published value is applied to a soil it was not measured on. A per-plot soil property should replace this."
+    },
+    "soilWiltingPoint": {
+      "value": 0.15,
+      "unit": "cubicMeterPerCubicMeter",
+      "source": "TODO: verificar fuente",
+      "note": "Provisional: FAO-56 Example 36 uses theta_WP 0.15 for silt. Same caveat as soilFieldCapacity."
+    },
+    "leafWetnessHoursWhenDewObserved": {
+      "value": null,
+      "unit": "hour",
+      "source": "TODO: verificar fuente",
+      "note": "Hours of leaf wetness to assume when the farmer reports wet leaves in the morning. No published mapping from a qualitative observation to a wetness duration was found, so the Wallin model runs only when a weather source supplies real leaf wetness hours."
     }
   }
 }

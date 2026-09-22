@@ -81,6 +81,9 @@ describe('the potato coefficient file', () => {
       'gddToTuberInitiation',
       'gddToBulking',
       'gddToMaturity',
+      'soilFieldCapacity',
+      'soilWiltingPoint',
+      'leafWetnessHoursWhenDewObserved',
     ]);
   });
 });
