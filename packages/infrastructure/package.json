@@ -10,9 +10,11 @@
     }
   },
   "dependencies": {
-    "@agrotwin/domain": "workspace:*"
+    "@agrotwin/domain": "workspace:*",
+    "dexie": "4.4.6"
   },
   "devDependencies": {
+    "fake-indexeddb": "6.2.5",
     "vitest": "5.0.1"
   }
 }
