@@ -6,4 +6,5 @@ export interface PlotRepositoryPort {
   findById(id: PlotId): Promise<Plot | undefined>;
   /** Every plot, newest first. */
   listAll(): Promise<readonly Plot[]>;
+  deleteAll(): Promise<void>;
 }
