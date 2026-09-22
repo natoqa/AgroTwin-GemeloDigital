@@ -3,9 +3,16 @@ import type { FormEvent } from 'react';
 import type { Plot } from '@agrotwin/domain';
 import { DomainError } from '@agrotwin/domain';
 import { useContainer } from '../../composition/ContainerContext';
+import { StorageNotice } from '../onboarding/StorageNotice';
 
 /** Lists the farmer's plots and registers new ones. */
-export function PlotsScreen({ onOpenPlot }: { onOpenPlot: (plot: Plot) => void }) {
+export function PlotsScreen({
+  onOpenPlot,
+  onOpenBackup,
+}: {
+  onOpenPlot: (plot: Plot) => void;
+  onOpenBackup: () => void;
+}) {
   const { plots, createPlot } = useContainer();
   const [stored, setStored] = useState<readonly Plot[]>([]);
   const [name, setName] = useState('');
@@ -31,6 +38,8 @@ export function PlotsScreen({ onOpenPlot }: { onOpenPlot: (plot: Plot) => void }
   return (
     <section data-testid="plots-screen">
       <h1>Mis parcelas</h1>
+
+      <StorageNotice onOpenBackup={onOpenBackup} />
 
       <form onSubmit={submit}>
         <label htmlFor="plot-name">Nombre de la parcela</label>
@@ -64,6 +73,11 @@ export function PlotsScreen({ onOpenPlot }: { onOpenPlot: (plot: Plot) => void }
       </ul>
 
       {stored.length === 0 ? <p>Todavía no tienes parcelas. Crea la primera.</p> : null}
+
+      <h2>Copia de seguridad</h2>
+      <button type="button" onClick={onOpenBackup} data-testid="go-backup">
+        Copia de seguridad
+      </button>
     </section>
   );
 }

@@ -110,6 +110,56 @@ eso el servidor se apaga de verdad, que además es una simulación más fiel.
 
 ---
 
+## Fase 2 — 2026-09-22
+
+### App shell (RNF-02: < 8 MB, excluyendo runtime de inferencia y modelo)
+
+- **Procedimiento:** `pnpm build`, y lectura del manifiesto de precache que
+  emite `vite-plugin-pwa`.
+- **Ejecutado en:** máquina de desarrollo.
+
+| Métrica | Fase 1 | Fase 2 |
+|---|---|---|
+| Precache del service worker | 331.56 KiB | **363.33 KiB** en 11 entradas |
+| `assets/index-*.js` | 318.4 KiB | 358.49 KiB (111.98 KiB con gzip) |
+| `assets/index-*.css` | 5.8 KiB | 5.95 KiB |
+
+**Resultado: RNF-02 se sigue cumpliendo — 363.33 KiB frente a 8 MB.** El
+crecimiento de 31.77 KiB es el de las pantallas de campañas, parcela y
+respaldo. Sigue sin entrar ONNX Runtime Web ni el modelo.
+
+### Funcionamiento sin red (RNF-07)
+
+- **Procedimiento:** `pnpm test:e2e`, igual que en la Fase 1: la prueba apaga
+  el servidor HTTP y recarga.
+- **Resultado:** **10/10 en verde**, de 4 que había en la Fase 1. Las nuevas
+  cubren el ciclo de respaldo, el rechazo de un archivo que no es un respaldo,
+  el borrado total y OPFS real.
+
+### OPFS y miniaturas en un navegador de verdad
+
+- **Procedimiento:** `packages/app/e2e/opfs.spec.ts` fotografía una parcela y
+  después lee el sistema de archivos privado del origen desde la página.
+- **Ejecutado en:** Chromium de Playwright 1.63.0, perfil `Pixel 7`.
+
+| Comprobación | Resultado |
+|---|---|
+| Tras una foto, `images/` contiene 2 archivos (original + miniatura) | ✅ |
+| Tras «Borrar todo», `images/` queda vacío | ✅ |
+
+Esto es lo que los tests unitarios **no** pueden decir: corren contra un doble
+en memoria del handle de directorio, porque Node no tiene OPFS (ADR-0007).
+
+### Lo que esta fase **no** midió
+
+- RNF-01, RNF-03, RNF-04 y RNF-05: siguen dependiendo del dispositivo de
+  referencia y de la inferencia real (Fases 5 y 7).
+- Accesibilidad (RNF-09): la Fase 1 dejó Lighthouse en 100, y las pantallas
+  nuevas llevan `label` en cada campo, pero **no se volvió a medir**. La
+  auditoría con `@axe-core/playwright` es entregable de la Fase 4.
+
+---
+
 ## Pendiente: prueba en teléfono (acción humana)
 
 CLAUDE.md §19 la asigna al equipo y §16 prohíbe simularla.
@@ -126,7 +176,9 @@ CLAUDE.md §19 la asigna al equipo y §16 prohíbe simularla.
 3. Instalar la app: menú de Chrome → *Instalar aplicación* / *Añadir a pantalla
    de inicio*.
 4. Abrirla desde el icono, con el **modo avión activado**.
-5. Completar el ciclo: crear parcela → tomar foto → ver el estado del gemelo.
+5. Completar el ciclo: crear parcela → empezar campaña → tomar foto → ver el
+   estado del gemelo.
+6. Fase 2: guardar una copia, borrar todo, y restaurarla desde el archivo.
 
 ### Tabla a rellenar
 
@@ -136,9 +188,13 @@ CLAUDE.md §19 la asigna al equipo y §16 prohíbe simularla.
 | Arranca desde el icono, sin barra de navegador | `TODO` | `TODO` |
 | Funciona con modo avión | `TODO` | `TODO` |
 | Crear parcela | `TODO` | `TODO` |
+| Empezar una campaña con la fecha de siembra | `TODO` | `TODO` |
 | Tomar foto (cámara del sistema) | `TODO` | `TODO` |
 | Aparece el estado del gemelo | `TODO` | `TODO` |
 | Sobrevive a cerrar y reabrir | `TODO` | `TODO` |
+| Chrome concede almacenamiento persistente | `TODO` | `TODO` |
+| Guardar copia: el archivo llega a Descargas | `TODO` | `TODO` |
+| Restaurar copia desde el archivo | `TODO` | `TODO` |
 | RNF-05: arranque en frío < 3 s | no aplica (gama media) | `TODO` |
 
 - **Fecha:** `TODO`

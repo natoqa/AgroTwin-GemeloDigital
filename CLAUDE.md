@@ -132,7 +132,7 @@ AgroTwin-GemeloDigital/
 │   └── threat-model.md
 ├── packages/
 │   ├── domain/                 # TypeScript PURO — el gemelo
-│   │   ├── src/{model,ports,agronomy,twin,learning,usecases,errors}
+│   │   ├── src/{model,ports,agronomy,twin,learning,usecases,errors,backup,testing}
 │   │   └── arch-fixtures/      # código que DEBE ser rechazado (ver §7)
 │   ├── infrastructure/         # adaptadores
 │   │   └── src/{persistence,inference,capture,crypto,weather,sensors,federation,system}
@@ -369,6 +369,8 @@ Un ADR por decisión, en `docs/adr/`, con estados `Propuesta`, `Aceptada`,
 | 0004 | Python fuera del dispositivo de borde | Aceptada |
 | 0005 | Backbone INT8 congelado + cabeza float32 entrenada en TypeScript | Aceptada |
 | 0006 | FedAvg propio en FastAPI; Flower evaluado y descartado | Aceptada |
+| 0007 | Imágenes en OPFS con índice en IndexedDB y retención en el dominio | Aceptada |
+| 0008 | Respaldo como JSON versionado con miniaturas, sin originales | Aceptada |
 
 Nuevos ADR esperados: modelo de riesgo de tizón elegido (Fase 3), estrategia de
 cifrado en reposo (Fase 7), y cualquier renegociación de RNF.
@@ -384,8 +386,8 @@ cifrado en reposo (Fase 7), y cualquier renegociación de RNF.
 | R-03 | ORT Web no entrena | Crítica | — | Resuelto por ADR-0005 |
 | R-04 | Multihilo WASM exige COOP/COEP | Alta | 5, 7 | Línea base single-thread; el hub emite COOP/COEP y en escritorio habilita SAB |
 | R-05 | Android 8–9 congelado en Chrome 138 | Alta | 0 | Resuelto en restricción 4 |
-| R-06 | Peso de ONNX Runtime Web vs. RNF-02 | Alta | 5 | RNF-02 ya excluye el runtime. Línea base Fase 1: 331.56 KiB de 8 MB |
-| R-07 | Desalojo de almacenamiento | Alta | 2, 7 | `storage.persist()` + retención + respaldo. **Activo:** la Fase 1 ya escribe fotos en IndexedDB sin protección |
+| R-06 | Peso de ONNX Runtime Web vs. RNF-02 | Alta | 5 | RNF-02 ya excluye el runtime. Línea base Fase 2: 363.37 KiB de 8 MB |
+| R-07 | Desalojo de almacenamiento | Alta | 2, 7 | **Mitigado en Fase 2:** `storage.persist()` en el onboarding, retención de originales (ADR-0007) y respaldo a archivo (ADR-0008). Queda la prueba de recuperación ante desalojo simulado (Fase 7) |
 | R-08 | Origen de la clave de cifrado sin cuenta | Media | 7 | Clave no exportable + PIN opcional |
 | R-09 | Demo federada sin ganancia estadística | Media | 6 | Reencuadrado en alcance |
 | R-10 | Flower incompatible con navegador | Media | — | Resuelto por ADR-0006 |
@@ -475,9 +477,14 @@ política de retención (miniatura permanente + original purgable),
 campañas, exportación de respaldo a archivo.
 
 **DoD:**
-- [ ] Tests del dominio y de repositorios (con `fake-indexeddb`) en verde.
-- [ ] Test que reconstruye el estado de una campaña sin imágenes originales.
-- [ ] Ciclo exportar respaldo → borrar datos → importar respaldo probado.
+- [x] Tests del dominio y de repositorios (con `fake-indexeddb`) en verde.
+      126 tests unitarios en 21 archivos, más 10 E2E de Playwright.
+- [x] Test que reconstruye el estado de una campaña sin imágenes originales.
+      `GetCampaignTimeline.test.ts`: purga los tres originales y compara la
+      línea de tiempo entera contra la de antes.
+- [x] Ciclo exportar respaldo → borrar datos → importar respaldo probado.
+      En el dominio (`BackupRoundTrip.test.ts`) y en el navegador
+      (`e2e/backup.spec.ts`, con descarga y selector de archivos reales).
 
 ### Fase 3 — BehaviorEngine *(la fase más importante; no la apures)*
 
@@ -662,9 +669,89 @@ Cuando una fase las necesite, pídelas explícitamente y no las simules.
 
 > Mantenida por Claude Code. Actualizar al cerrar cada fase.
 
-**Fase actual:** 1 — Rebanada vertical. Implementada y verificada en la rama
-local `fase/1-rebanada-vertical`; pendiente de tu confirmación para el merge a
-`main` y la etiqueta `fase-1`. La Fase 2 no empieza sin confirmación explícita.
+**Fase actual:** 2 — Dominio y persistencia. Implementada y verificada en la
+rama local `fase/2-dominio-persistencia`; pendiente de tu confirmación para el
+merge a `main` y la etiqueta `fase-2`. La Fase 3 no empieza sin confirmación
+explícita.
+
+**Fase 2 — cierre (2026-09-22)**
+
+El gemelo deja de ser un registro de fotos: hay campañas, observaciones
+separadas de los snapshots, fotos en OPFS con retención, almacenamiento
+persistente pedido al navegador y respaldo exportable a archivo.
+
+DoD verificado ejecutando comandos:
+
+- `pnpm lint && pnpm typecheck && pnpm test && pnpm test:arch && pnpm build` en verde.
+- **126 tests unitarios en 21 archivos** (45 en la Fase 1) y **10 E2E de
+  Playwright** (4 en la Fase 1), incluidos el ciclo completo de respaldo, el
+  rechazo de un archivo inválido y OPFS real en el navegador.
+- Reconstrucción sin imágenes: `GetCampaignTimeline.test.ts` purga los tres
+  originales de una campaña y compara la línea de tiempo completa.
+- App shell: **363.37 KiB** de precache frente a los 8 MB de RNF-02.
+- Cobertura del dominio (sin contar los dobles de prueba): **96.14%**
+  sentencias, 96.41% líneas, 99.07% funciones, **79.06% ramas**.
+
+**Decisiones cerradas (Fase 2):**
+
+- `campaignId` es **obligatorio** en `TwinSnapshot`. La migración Dexie v1→v2
+  **borra** los snapshots de la Fase 1: no hay forma honesta de inventarles una
+  fecha de siembra, y de esa fecha cuelga toda la agronomía de la Fase 3. La
+  etiqueta `fase-1` nunca se distribuyó.
+- `Observation` (la evidencia) y `TwinSnapshot` (el estado) son entidades
+  distintas, porque envejecen distinto: la retención puede quitar una foto,
+  nunca un diagnóstico.
+- La campaña **no tiene nombre**: se identifica por su fecha de siembra, que es
+  lo que el agricultor recuerda. Un campo de texto menos.
+- `Plot` gana área y ubicación **opcionales**. La latitud es lo que la Fase 3
+  necesita para Hargreaves-Samani; sin ella no habrá ET0 y el gemelo tendrá que
+  decirlo, no suponerla.
+- Fotos en OPFS con índice en IndexedDB; política de retención en el dominio
+  (ADR-0007). Handle de directorio inyectado, para que sea testeable en Node.
+- Respaldo: JSON versionado con miniaturas en base64, sin originales, con
+  importación todo-o-nada e idempotente (ADR-0008).
+- El contenedor del composition root pasa a ser **asíncrono**, porque OPFS
+  entrega su handle por promesa. `main.tsx` muestra un mensaje si falla.
+- La retención se ejecuta una vez al arrancar. Una política que nadie aplica no
+  es una política.
+
+**Desviaciones (Fase 2):**
+
+- **`src/testing/` excluido de la cobertura.** Los dobles en memoria del
+  dominio son infraestructura de prueba; se miden por los tests que los usan,
+  no *como* código de producción. Sin la exclusión la cobertura es 94.96% de
+  sentencias; con ella, 96.14%. Ningún umbral estaba activo: el de la Fase 3
+  todavía no entra en vigor.
+- **Ramas al 79.06%.** Sentencias, líneas y funciones superan el 85% de RNF-06,
+  pero las ramas no. RNF-06 no dice sobre qué métrica se mide. **Hay que
+  decidirlo al abrir la Fase 3**, y subir las ramas antes de activar el umbral:
+  lo que falta son sobre todo los caminos de error del validador del respaldo.
+- **`IndexedDbImageStore` eliminado** en lugar de conservarse como respaldo.
+  Mantener dos almacenes de imágenes tras el mismo puerto habría sido código
+  muerto desde el primer día.
+
+**Defecto de CI heredado de la Fase 1, corregido (2026-09-22).**
+
+El job `e2e` del workflow estaba **en rojo en `main`** desde el cierre de la
+Fase 1. Es un job independiente del job `verify`, así que nunca ejecutaba
+`tsc --build`; y `app` resuelve `@agrotwin/domain` y `@agrotwin/infrastructure`
+por el campo `exports` de cada paquete, que apunta a `dist/`. En un checkout
+recién hecho no hay `dist/`, y Rolldown falla al resolver el import.
+
+**Por qué no lo vi:** el cierre de la Fase 1 dice «CI en verde». Lo verifiqué
+ejecutando los comandos **en mi máquina**, donde `dist/` ya existía de una
+compilación anterior. Nunca miré el resultado en GitHub. Las pasadas de E2E de
+la Fase 2 pasaron por la misma razón: el entorno local no era un clon limpio.
+
+**Corrección:** la dependencia deja de estar en el orden de los jobs y pasa a
+estar declarada en los scripts de `packages/app`: `build`, `dev` y `test:e2e`
+ejecutan `tsc --build ../..` antes que Vite. Verificado borrando todos los
+`dist/` y `*.tsbuildinfo` y ejecutando la suite completa desde cero: lint,
+typecheck, 126 tests, 4/4 guardianes, build y **10/10 E2E**.
+
+**Lo que cambia en cómo trabajo:** a partir de aquí, «verde» significa verde en
+CI, no verde en esta máquina. Cuando un comando dependa de artefactos
+generados, lo verifico borrándolos primero.
 
 **Fase 1 — cierre (2026-09-21)**
 
@@ -679,6 +766,10 @@ DoD verificado ejecutando comandos:
   completo con el servidor apagado.
 - App shell: **331.56 KiB** de precache frente a los 8 MB de RNF-02.
 - Lighthouse móvil: rendimiento 99, accesibilidad **100**, buenas prácticas 100.
+
+> **Corrección (2026-09-22).** Donde este cierre dice «CI en verde», debía
+> decir «verde en la máquina de desarrollo». El job `e2e` estaba en rojo en
+> GitHub. Causa y arreglo, en el cierre de la Fase 2.
 
 **Decisiones cerradas (Fase 1):**
 
@@ -767,6 +858,11 @@ clave privada del hub no ha entrado nunca al repositorio.
       y tabla vacía en `docs/spikes/r02-https-lan.md`. Mientras no se ejecute,
       ADR-0003 sigue condicionado.
 - [ ] Normales climatológicas de SENAMHI (necesarias antes de Fase 3).
+      **Bloqueante ya:** la Fase 3 empieza sin ellas solo con fixture
+      `SYNTHETIC` y sin declarar validación agronómica.
+- [ ] **(Fase 2)** Probar en el Redmi Note 14: almacenamiento persistente
+      concedido, guardar copia a Descargas y restaurarla. Tabla en
+      `docs/nfr/measurements.md`.
 - [x] Licencia del repositorio: MIT (2026-09-21). Queda por verificar la
       licencia de uso de los datasets, que es una tarea distinta (§19).
 

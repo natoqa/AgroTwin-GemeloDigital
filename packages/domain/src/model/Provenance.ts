@@ -1,9 +1,12 @@
 /** Where a piece of a snapshot came from. */
-export type ProvenanceSource =
-  | 'image_diagnosis'
-  | 'manual_weather'
-  | 'climate_normals'
-  | 'network_weather_cache';
+export const PROVENANCE_SOURCES = [
+  'image_diagnosis',
+  'manual_weather',
+  'climate_normals',
+  'network_weather_cache',
+] as const;
+
+export type ProvenanceSource = (typeof PROVENANCE_SOURCES)[number];
 
 /**
  * One traced input of a snapshot.
@@ -19,4 +22,8 @@ export interface ProvenanceEntry {
   readonly source: ProvenanceSource;
   /** 0–1. */
   readonly confidence: number;
+}
+
+export function isProvenanceSource(value: string): value is ProvenanceSource {
+  return (PROVENANCE_SOURCES as readonly string[]).includes(value);
 }

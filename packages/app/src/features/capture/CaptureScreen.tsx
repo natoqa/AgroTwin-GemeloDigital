@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ChangeEvent } from 'react';
-import type { Plot, TwinSnapshot } from '@agrotwin/domain';
+import type { Campaign, Plot, TwinSnapshot } from '@agrotwin/domain';
 import { useContainer } from '../../composition/ContainerContext';
 
 /**
@@ -9,18 +9,21 @@ import { useContainer } from '../../composition/ContainerContext';
  * Capture goes through `<input capture="environment">` rather than
  * `getUserMedia`: it hands the job to the system camera, which the farmer
  * already knows, and avoids permission and MediaStream lifecycle handling on a
- * low-end phone. A live preview is a Phase 4 question, not a Phase 1 one.
+ * low-end phone. A live preview is a Phase 4 question.
  */
 export function CaptureScreen({
   plot,
+  campaign,
   onRecorded,
   onBack,
 }: {
   plot: Plot;
+  campaign: Campaign;
   onRecorded: (snapshot: TwinSnapshot) => void;
   onBack: () => void;
 }) {
   const { recordObservation } = useContainer();
+  const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
 
@@ -31,10 +34,11 @@ export function CaptureScreen({
     setBusy(true);
     setError(undefined);
     try {
-      const snapshot = await recordObservation({
-        plotId: plot.id,
+      const { snapshot } = await recordObservation({
+        campaignId: campaign.id,
         image: await file.arrayBuffer(),
         contentType: file.type || 'image/jpeg',
+        ...(note.trim() === '' ? {} : { note }),
       });
       onRecorded(snapshot);
     } catch {
@@ -49,6 +53,17 @@ export function CaptureScreen({
       <h1>Foto de {plot.name}</h1>
       <p>Toma una foto de una hoja.</p>
 
+      <label htmlFor="observation-note">¿Quieres apuntar algo? (opcional)</label>
+      <input
+        id="observation-note"
+        data-testid="observation-note"
+        type="text"
+        value={note}
+        onChange={(event) => setNote(event.target.value)}
+        autoComplete="off"
+      />
+
+      <label htmlFor="photo">Foto de la hoja</label>
       <input
         id="photo"
         data-testid="photo-input"

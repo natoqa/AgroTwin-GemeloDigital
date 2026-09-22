@@ -1,5 +1,13 @@
+export { ActiveCampaignAlreadyExistsError } from './ActiveCampaignAlreadyExistsError.js';
+export { BackupFormatError } from './BackupFormatError.js';
+export { CampaignNotActiveError } from './CampaignNotActiveError.js';
+export { CampaignNotFoundError } from './CampaignNotFoundError.js';
 export { DomainError } from './DomainError.js';
+export { InvalidAreaError } from './InvalidAreaError.js';
+export { InvalidCampaignDatesError } from './InvalidCampaignDatesError.js';
+export { InvalidCoordinatesError } from './InvalidCoordinatesError.js';
 export { InvalidEpochMillisError } from './InvalidEpochMillisError.js';
 export { InvalidLocalDateError } from './InvalidLocalDateError.js';
+export { InvalidObservationNoteError } from './InvalidObservationNoteError.js';
 export { InvalidPlotNameError } from './InvalidPlotNameError.js';
 export { PlotNotFoundError } from './PlotNotFoundError.js';

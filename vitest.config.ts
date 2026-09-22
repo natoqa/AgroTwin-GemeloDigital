@@ -39,7 +39,10 @@ export default defineConfig({
       provider: 'v8',
       reportsOnly: false,
       include: ['packages/domain/src/**/*.ts'],
-      exclude: ['**/*.test.ts', '**/index.ts'],
+      // `src/testing/` holds the in-memory doubles the suite runs on. It is
+      // test infrastructure, so it is measured by the tests that use it, not
+      // measured *as* production code.
+      exclude: ['**/*.test.ts', '**/index.ts', 'packages/domain/src/testing/**'],
       reporter: ['text', 'lcov'],
       // CLAUDE.md §7: the 85% domain threshold activates in Phase 3, not before.
     },

@@ -1,26 +1,30 @@
 import type { Diagnosis } from './Diagnosis.js';
 import type { EpochMillis } from './EpochMillis.js';
-import type { ImageRef, PlotId, SnapshotId } from './Ids.js';
+import type { CampaignId, ObservationId, PlotId, SnapshotId } from './Ids.js';
 import type { LocalDate } from './LocalDate.js';
 import type { ProvenanceEntry } from './Provenance.js';
 
 /**
  * The state of the plot at one instant: one sample of the twin's time series.
  *
- * Phase 1 carries only what the vertical slice produces. The agronomic fields
- * of CLAUDE.md section 8.1 — `phenologicalStage`, `accumulatedGdd`,
- * `waterBalance`, `healthIndex`, `lateBlightRisk` — arrive with the
- * BehaviorEngine in Phase 3, which is what can compute them honestly. They are
- * absent rather than stubbed: a zero would read as a measurement.
+ * Every snapshot belongs to a campaign, because the agronomic fields are only
+ * defined inside a crop cycle — growing degree days accumulate from a planting
+ * date, and a phenological stage outside a campaign means nothing.
+ *
+ * Those agronomic fields of CLAUDE.md §8.1 — `phenologicalStage`,
+ * `accumulatedGdd`, `waterBalance`, `healthIndex`, `lateBlightRisk` — arrive
+ * with the BehaviorEngine in Phase 3, which is what can compute them honestly.
+ * They are absent rather than stubbed: a zero would read as a measurement.
  */
 export interface TwinSnapshot {
   readonly id: SnapshotId;
   readonly plotId: PlotId;
+  readonly campaignId: CampaignId;
   readonly at: EpochMillis;
   readonly date: LocalDate;
   readonly diagnosis: Diagnosis;
-  /** The photograph behind the diagnosis, when it is still stored. */
-  readonly imageRef?: ImageRef;
+  /** The observation this state was derived from, when there was one. */
+  readonly observationId?: ObservationId;
   /**
    * 0–1, the trust owed to this snapshot as a whole.
    *
