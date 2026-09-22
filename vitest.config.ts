@@ -44,7 +44,19 @@ export default defineConfig({
       // measured *as* production code.
       exclude: ['**/*.test.ts', '**/index.ts', 'packages/domain/src/testing/**'],
       reporter: ['text', 'lcov'],
-      // CLAUDE.md §7: the 85% domain threshold activates in Phase 3, not before.
+      /*
+       * CLAUDE.md §7 and RNF-06: 85% over `packages/domain`, active from
+       * Phase 3. The requirement does not name a metric, so all four are
+       * gated: statements, branches, functions and lines. Branches is the one
+       * that actually measures paths, and gating only the easy three would
+       * have made the threshold decoration.
+       */
+      thresholds: {
+        statements: 85,
+        branches: 85,
+        functions: 85,
+        lines: 85,
+      },
     },
   },
 });

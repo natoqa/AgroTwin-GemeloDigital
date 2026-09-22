@@ -160,6 +160,63 @@ en memoria del handle de directorio, porque Node no tiene OPFS (ADR-0007).
 
 ---
 
+## Fase 3 — 2026-09-22
+
+### Cobertura del dominio (RNF-06: > 85%, activo desde esta fase)
+
+- **Procedimiento:** `pnpm test`, que desde esta fase corre con `--coverage`.
+  El umbral está en `vitest.config.ts` y el job `verify` del CI lo ejecuta.
+- **Métrica gateada:** las **cuatro**. RNF-06 no dice sobre cuál se mide, y
+  gatear solo las tres fáciles habría dejado el umbral como decoración.
+
+| Métrica | Fase 2 | Fase 3 | Umbral |
+|---|---|---|---|
+| Sentencias | 96.14% | **97.30%** | 85% |
+| Ramas | 79.06% | **86.73%** | 85% |
+| Funciones | 99.07% | **98.80%** | 85% |
+| Líneas | 96.41% | **97.71%** | 85% |
+
+**Comprobado que el umbral muerde:** subiéndolo temporalmente a 99% en ramas,
+la suite falla con `ERROR: Coverage for branches (86.73%) does not meet global
+threshold (99%)`. No es un umbral decorativo.
+
+### Simulación de campaña (CLAUDE.md §8.3)
+
+- **Procedimiento:** test en `packages/domain/src/twin/BehaviorEngine.test.ts`,
+  que mide una campaña de 120 días y falla si se pasa del presupuesto.
+- **Presupuesto:** 50 ms. Es deliberadamente generoso: protege contra un O(n²)
+  accidental, no contra una laptop lenta.
+- **Resultado:** en verde. Medido en la máquina de desarrollo, no en el
+  dispositivo de referencia.
+
+### Suite
+
+| Métrica | Fase 2 | Fase 3 |
+|---|---|---|
+| Tests unitarios | 126 en 21 archivos | **295 en 36 archivos** |
+| E2E de Playwright | 10 | **13** |
+| Guardianes arquitectónicos | 4/4 | 4/4 |
+
+### App shell (RNF-02: < 8 MB)
+
+| Métrica | Fase 2 | Fase 3 |
+|---|---|---|
+| Precache del service worker | 363.37 KiB | **387.89 KiB** |
+
+**RNF-02 se sigue cumpliendo.** El crecimiento son las pantallas de clima y
+estado agronómico, más el fixture climático embebido.
+
+### Lo que esta fase **no** midió
+
+- RNF-01, RNF-03, RNF-04 y RNF-05: siguen dependiendo del dispositivo de
+  referencia y de la inferencia real.
+- Accesibilidad (RNF-09): sin volver a medir; es entregable de la Fase 4.
+- **Nada agronómico está validado en campo.** Lo verificado es que el código
+  reproduce ecuaciones y tablas publicadas. Con normales sintéticas, ningún
+  número que salga del motor describe una parcela real.
+
+---
+
 ## Pendiente: prueba en teléfono (acción humana)
 
 CLAUDE.md §19 la asigna al equipo y §16 prohíbe simularla.

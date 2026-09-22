@@ -56,12 +56,39 @@ Consultado en <https://www.fao.org/4/x0490e/x0490e00.htm> (2026-09-22).
 | Declinación solar | `δ = 0.409 sin(2π J / 365 − 1.39)` | Ec. 24 |
 | Ángulo horario de la puesta | `ωs = arccos(−tan φ · tan δ)` | Ec. 25 |
 | MJ a mm de evaporación equivalente | `× 0.408` | Ec. 20 |
+| Evapotranspiración del cultivo | `ETc = ETo × Kc` | Ec. 58 |
+| Agua disponible total | `TAW = 1000 (θFC − θWP) Zr` | Ec. 82 |
+| Agua fácilmente disponible | `RAW = p · TAW` | Ec. 83 |
+| Coeficiente de estrés hídrico | `Ks = (TAW − Dr) / (TAW − p·TAW)` | Ec. 84 |
+| Balance diario del agua del suelo | `Dr = Dr(ayer) − (P − RO) − I + ETc + DP` | Ec. 85 |
 
 **En la ecuación 52, ET0 y Ra van los dos en mm día⁻¹.** Olvidar la conversión
 de la ecuación 20 infla el resultado por 1/0.408 ≈ 2.45. Hay un test dedicado
 a eso.
 
-### 2.2 Temperatura base para grados-día
+### 2.2 Riesgo de tizón tardío
+
+**Wallin, J.R. (1962).** *Summary of recent progress in predicting late blight
+epidemics in United States and Canada.* American Potato Journal 39:306–312.
+
+Tabla de valores de severidad diaria (DSV), transcrita tal como se publica:
+
+| DSV | 7.2–11.6 °C | 11.7–15.0 °C | 15.1–26.6 °C |
+|---|---|---|---|
+| 0 | ≤ 15 h | ≤ 12 h | ≤ 9 h |
+| 1 | 16–18 h | 13–15 h | 10–12 h |
+| 2 | 19–21 h | 16–18 h | 13–15 h |
+| 3 | 22–24 h | 19–21 h | 16–18 h |
+| 4 | > 25 h | > 22 h | > 19 h |
+
+Horas = duración del periodo con humedad relativa ≥ 90%; la temperatura es la
+media **durante ese periodo**. Fuera de 7.2–26.6 °C el DSV es 0.
+
+Dos decisiones de implementación, en ADR-0009: el hueco de una hora entre
+«22–24» y «> 25» se cierra leyendo los umbrales como «al menos N horas», y
+**el riesgo no se calcula** cuando nadie midió la humedad foliar.
+
+### 2.3 Temperatura base para grados-día
 
 **Sands, P.J., Hackett, C. & Nix, H.A. (1979).** *A model of the development
 and bulking of potatoes.* Field Crops Research 2:309–331.
@@ -102,7 +129,32 @@ que podría salir bien por cancelación de errores.
 Las tolerancias son el redondeo del propio documento.
 Test: `packages/domain/src/agronomy/SolarRadiation.test.ts`.
 
-### 3.2 Lo que **no** se pudo validar, y por qué
+### 3.2 Balance hídrico
+
+**FAO-56, capítulo 8, Ejemplo 36** — *Determination of readily available soil
+water for various crops and soil types*. Tomate con Zr = 0.8 m y p = 0.40,
+sobre tres suelos. Se comprueban **los tres**, porque una sola fila no
+detectaría una capacidad de campo transpuesta ni un factor 1000 perdido.
+
+| Suelo | θFC | θWP | TAW publicado | RAW publicado |
+|---|---|---|---|---|
+| Arenoso franco | 0.15 | 0.06 | 72 mm | 29 mm |
+| Limoso | 0.32 | 0.15 | 136 mm | 54 mm |
+| Franco arcillo-limoso | 0.35 | 0.23 | 96 mm | 38 mm |
+
+Test: `packages/domain/src/agronomy/WaterBalance.test.ts`. Incluye además una
+prueba de conservación a lo largo de 120 días: lo que entró debe estar
+transpirado, percolado o pendiente en el agotamiento. Un balance que gotee un
+milímetro al día son 120 mm por campaña, la diferencia entre regar y no regar.
+
+**Escorrentía no modelada, y en qué dirección falla.** Sin pendiente, textura
+ni intensidad de lluvia en el dispositivo, cualquier cifra de escorrentía sería
+inventada. Se trata toda la lluvia como infiltrada, lo que **sobreestima** el
+agua que llega al suelo y hace que el gemelo aconseje regar **de menos** antes
+que de más. Para un agricultor que paga el agua, esa es la dirección segura, y
+queda dicha aquí y en el código.
+
+### 3.3 Lo que **no** se pudo validar, y por qué
 
 **FAO-56 no publica ningún ejemplo resuelto de la ecuación 52.** El capítulo
 introduce Hargreaves-Samani para datos faltantes y sigue adelante sin
@@ -127,10 +179,15 @@ código implementa la ecuación que dice implementar.
 
 Nueve entradas. Ninguna tiene fuente verificada y todas reducen la confianza.
 
-### 4.1 Provisionales (tienen valor, pero de la región equivocada)
+### 4.1 Provisionales (tienen valor, pero no verificado para aquí)
 
 | Coeficiente | Valor | Base provisional | Qué hace falta |
 |---|---|---|---|
+| `soilFieldCapacity` | 0.32 m³/m³ | FAO-56 Ejemplo 36, suelo limoso | La textura real del suelo de la parcela. A futuro debería ser una propiedad **por parcela**, no un coeficiente del cultivo |
+| `soilWiltingPoint` | 0.15 m³/m³ | FAO-56 Ejemplo 36, suelo limoso | ídem |
+| `rainfallFactorLittle` | 0.5 | Decisión de modelado | Multiplica la lluvia de las normales cuando el agricultor dice «llovió poco». Sin respaldo publicado |
+| `rainfallFactorHeavy` | 2.0 | Decisión de modelado | Ídem para «llovió mucho» |
+| `coldNightTemperatureDrop` | 3 °C | Decisión de modelado | Cuánto baja la mínima cuando el agricultor reporta noche fría. Sin respaldo publicado |
 | `stageLengthInitial` | 25 d | FAO-56 Tabla 11, papa, clima continental, siembra de mayo (25/30/45/30, total 130 d) | FAO-56 **no publica** una fila para los Andes peruanos. Hace falta la duración de etapas para la sierra de La Libertad |
 | `stageLengthDevelopment` | 30 d | ídem | ídem |
 | `stageLengthMid` | 45 d | ídem | ídem |
@@ -145,6 +202,7 @@ Nueve entradas. Ninguna tiene fuente verificada y todas reducen la confianza.
 | `gddToTuberInitiation` | Tiempo térmico a tuberización | ídem |
 | `gddToBulking` | Tiempo térmico al inicio del llenado | ídem |
 | `gddToMaturity` | Tiempo térmico a madurez | ídem |
+| `leafWetnessHoursWhenDewObserved` | Horas de humedad foliar a suponer cuando el agricultor reporta hoja mojada al amanecer | **El riesgo de tizón no se calcula nunca.** Ver ADR-0009 |
 
 **Qué significa esto en la práctica.** Hoy el gemelo acumula grados-día
 correctamente y **dice que no sabe en qué etapa está el cultivo**. Es el
@@ -162,6 +220,36 @@ UNT—. Con eso, la fenología se enciende sin tocar una línea de código.
 ## 5. Datos climáticos
 
 Las normales climatológicas de SENAMHI todavía **no** están disponibles
-(riesgo R-01). Mientras no lleguen, se trabaja con un fixture marcado
-`SYNTHETIC` y **no se declara validación agronómica de ningún resultado**, tal
-como manda §9.
+(riesgo R-01). Mientras no lleguen se usa
+`data/climate/la-libertad.SYNTHETIC.json`, y hay que ser explícito sobre lo que
+eso significa:
+
+- **Los números de ese archivo están inventados.** §9 autoriza el fixture
+  sintético; el archivo lo dice en mayúsculas en su primer campo.
+- Todo lo que sale de él lleva la procedencia **`synthetic_normals`**, que es
+  una fuente distinta de `climate_normals` precisamente para que nada derivado
+  pueda confundirse con un dato. Su confianza base es 0.1, la más baja del
+  sistema.
+- La pantalla del gemelo muestra un aviso permanente mientras esa fuente esté
+  activa.
+- **No se declara validación agronómica de ningún resultado.**
+
+Sustituir el archivo por las normales reales de SENAMHI es el único cambio
+necesario: nada de código depende de que sea sintético salvo la etiqueta.
+
+### La calidad de una fuente, en un número
+
+`SOURCE_BASE_CONFIDENCE` en `packages/domain/src/model/Weather.ts`. Son juicios
+de ingeniería, puestos por escrito para poder discutirlos:
+
+| Fuente | Confianza base | Por qué |
+|---|---|---|
+| `synthetic_normals` | 0.10 | Inventada |
+| `climate_normals` | 0.35 | Un año típico, no este |
+| `manual_weather` | 0.55 | Esta parcela, este día — pero cualitativo |
+| `network_weather_cache` | 0.70 | Medición real de la región, quizá vieja |
+| `image_diagnosis` | 1.00 | La confianza la pone el propio clasificador |
+
+Esa base se multiplica después por la calidad de los coeficientes que cada
+modelo usó, de modo que un día construido sobre normales sintéticas y
+duraciones de etapa provisionales llega a la pantalla visiblemente débil.
