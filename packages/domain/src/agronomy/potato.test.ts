@@ -84,6 +84,9 @@ describe('the potato coefficient file', () => {
       'soilFieldCapacity',
       'soilWiltingPoint',
       'leafWetnessHoursWhenDewObserved',
+      'rainfallFactorLittle',
+      'rainfallFactorHeavy',
+      'coldNightTemperatureDrop',
     ]);
   });
 });

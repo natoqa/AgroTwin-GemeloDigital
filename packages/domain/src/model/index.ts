@@ -45,6 +45,8 @@ export { PROVENANCE_SOURCES, isProvenanceSource } from './Provenance.js';
 export type { ProvenanceEntry, ProvenanceSource } from './Provenance.js';
 export { DEFAULT_RETENTION_POLICY } from './RetentionPolicy.js';
 export type { RetentionPolicy } from './RetentionPolicy.js';
+export { RAINFALL_ANSWERS, isRainfallAnswer } from './WeatherObservation.js';
+export type { RainfallAnswer, WeatherObservation } from './WeatherObservation.js';
 export { SOURCE_BASE_CONFIDENCE } from './Weather.js';
 export type { DailyWeather } from './Weather.js';
 export type { TwinSnapshot } from './TwinSnapshot.js';

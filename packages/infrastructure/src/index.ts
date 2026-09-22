@@ -3,6 +3,7 @@ export { DexieCampaignRepository } from './persistence/DexieCampaignRepository.j
 export { DexieObservationRepository } from './persistence/DexieObservationRepository.js';
 export { DexiePlotRepository } from './persistence/DexiePlotRepository.js';
 export { DexieSnapshotRepository } from './persistence/DexieSnapshotRepository.js';
+export { DexieWeatherObservationRepository } from './persistence/DexieWeatherObservationRepository.js';
 export { CanvasImageThumbnailer } from './persistence/ImageThumbnailer.js';
 export type { ImageThumbnailer, ThumbnailResult } from './persistence/ImageThumbnailer.js';
 export { IMAGE_DIRECTORY, OpfsImageStore } from './persistence/OpfsImageStore.js';
@@ -11,3 +12,13 @@ export { BackupFileAdapter } from './system/BackupFileAdapter.js';
 export { CryptoIdGenerator } from './system/CryptoIdGenerator.js';
 export { NavigatorStorageAdapter } from './system/NavigatorStorageAdapter.js';
 export { SystemClockAdapter } from './system/SystemClockAdapter.js';
+export { ClimateNormals, InvalidClimateNormalsError } from './weather/ClimateNormals.js';
+export type {
+  ClimateNormalsDocument,
+  DailyNormal,
+  MonthlyNormal,
+} from './weather/ClimateNormals.js';
+export { NormalsWeatherAdapter } from './weather/NormalsWeatherAdapter.js';
+export { ManualWeatherAdapter } from './weather/ManualWeatherAdapter.js';
+export { CachedNetworkWeatherAdapter } from './weather/CachedNetworkWeatherAdapter.js';
+export type { WeatherFetcher } from './weather/CachedNetworkWeatherAdapter.js';

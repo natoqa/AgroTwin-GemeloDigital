@@ -119,6 +119,24 @@
       "unit": "hour",
       "source": "TODO: verificar fuente",
       "note": "Hours of leaf wetness to assume when the farmer reports wet leaves in the morning. No published mapping from a qualitative observation to a wetness duration was found, so the Wallin model runs only when a weather source supplies real leaf wetness hours."
+    },
+    "rainfallFactorLittle": {
+      "value": 0.5,
+      "unit": "dimensionless",
+      "source": "TODO: verificar fuente",
+      "note": "Provisional. Multiplies the normals' rainfall when the farmer answers 'a little'. A farmer reporting 'no rain' needs no coefficient — zero is a fact they know — but 'a little' and 'a lot' are bands, and these two factors are the band centres. They are a modelling choice with no published backing and they reduce confidence accordingly."
+    },
+    "rainfallFactorHeavy": {
+      "value": 2.0,
+      "unit": "dimensionless",
+      "source": "TODO: verificar fuente",
+      "note": "Provisional. Multiplies the normals' rainfall when the farmer answers 'a lot'. Same caveat as rainfallFactorLittle."
+    },
+    "coldNightTemperatureDrop": {
+      "value": 3.0,
+      "unit": "degreeCelsius",
+      "source": "TODO: verificar fuente",
+      "note": "Provisional. Subtracted from the normals' minimum temperature when the farmer reports a cold night. A modelling choice with no published backing."
     }
   }
 }

@@ -18,8 +18,10 @@ import type {
   Observation,
   Plot,
   ProvenanceEntry,
+  RainfallAnswer,
   StoredImageInfo,
   TwinSnapshot,
+  WeatherObservation,
 } from '@agrotwin/domain';
 
 /**
@@ -91,6 +93,17 @@ export interface ImageRecord {
   contentType: string;
   byteLength: number;
   storedAt: number;
+}
+
+/** Answers about one day's weather on one plot. */
+export interface WeatherObservationRecord {
+  /** `plotId|date`: one answer per plot per day, by construction. */
+  id: string;
+  plotId: string;
+  date: string;
+  rainfall: RainfallAnswer;
+  coldNight: number;
+  recordedAt: number;
 }
 
 // --- Plots ---------------------------------------------------------------
@@ -218,6 +231,30 @@ export const toSnapshot = (record: SnapshotRecord): TwinSnapshot => ({
 });
 
 // --- Images --------------------------------------------------------------
+
+export const weatherObservationKey = (plotId: string, date: string): string =>
+  `${plotId}|${date}`;
+
+export const toWeatherObservationRecord = (
+  observation: WeatherObservation,
+): WeatherObservationRecord => ({
+  id: weatherObservationKey(observation.plotId, observation.date.toString()),
+  plotId: observation.plotId,
+  date: observation.date.toString(),
+  rainfall: observation.rainfall,
+  // IndexedDB cannot index a boolean, and the day-and-plot index is what the
+  // manual weather adapter reads on every campaign recompute.
+  coldNight: observation.coldNight ? 1 : 0,
+  recordedAt: observation.recordedAt,
+});
+
+export const toWeatherObservation = (record: WeatherObservationRecord): WeatherObservation => ({
+  plotId: plotId(record.plotId),
+  date: LocalDate.parse(record.date),
+  rainfall: record.rainfall,
+  coldNight: record.coldNight === 1,
+  recordedAt: epochMillis(record.recordedAt),
+});
 
 export const toImageInfo = (record: ImageRecord): StoredImageInfo => ({
   ref: imageRef(record.id),

@@ -34,6 +34,7 @@ export interface DailyWeather {
  *
  * These are engineering judgements, stated so they can be argued with:
  *
+ * - **Synthetic normals** are invented. They rank lowest of all, on purpose.
  * - **Climate normals** describe a typical year, not this one. They are the
  *   floor the twin stands on when nothing better exists.
  * - **A farmer's answer** is about *this* plot on *this* day, which normals
@@ -45,6 +46,9 @@ export interface DailyWeather {
 export const SOURCE_BASE_CONFIDENCE: Readonly<Record<ProvenanceSource, number>> = {
   image_diagnosis: 1,
   climate_normals: 0.35,
+  // Invented numbers. Low enough that anything resting on them is visibly
+  // provisional wherever it surfaces.
+  synthetic_normals: 0.1,
   manual_weather: 0.55,
   network_weather_cache: 0.7,
 };

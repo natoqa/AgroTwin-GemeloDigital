@@ -1,7 +1,13 @@
+import type { Coefficients } from '../agronomy/Coefficients.js';
+import { runBehaviorEngine } from '../twin/BehaviorEngine.js';
+import type { TwinDayState } from '../twin/BehaviorEngine.js';
+import type { WeatherPort } from '../ports/WeatherPort.js';
 import { CampaignNotActiveError } from '../errors/CampaignNotActiveError.js';
 import { CampaignNotFoundError } from '../errors/CampaignNotFoundError.js';
 import { PlotNotFoundError } from '../errors/PlotNotFoundError.js';
 import { isCampaignActive } from '../model/Campaign.js';
+import type { Campaign } from '../model/Campaign.js';
+import type { Plot } from '../model/Plot.js';
 import { observationId, snapshotId } from '../model/Ids.js';
 import type { CampaignId } from '../model/Ids.js';
 import { LocalDate } from '../model/LocalDate.js';
@@ -26,6 +32,16 @@ export interface RecordObservationDependencies {
   readonly inference: InferencePort;
   readonly clock: ClockPort;
   readonly ids: IdGeneratorPort;
+  /**
+   * Optional, because the slice must keep working without it. When it is
+   * supplied and the plot has a location, the snapshot carries the agronomic
+   * state of the day as well as the diagnosis; when it is not, those fields
+   * stay absent rather than zero.
+   */
+  readonly agronomy?: {
+    readonly weather: WeatherPort;
+    readonly coefficients: Coefficients;
+  };
 }
 
 export interface RecordObservationInput {
@@ -87,6 +103,8 @@ export function recordObservationUseCase(deps: RecordObservationDependencies) {
     });
     await deps.observations.save(observation);
 
+    const agronomy = await agronomicStateFor(deps, campaign, plot, date);
+
     const snapshot: TwinSnapshot = {
       id: snapshotId(deps.ids.newId()),
       plotId: plot.id,
@@ -98,12 +116,57 @@ export function recordObservationUseCase(deps: RecordObservationDependencies) {
       // Image diagnosis is the only input the twin has so far, so the snapshot
       // can be no more confident than it is.
       confidence: diagnosis.confidence,
+      ...agronomicFields(agronomy),
       provenance: [
         { field: 'diagnosis', source: 'image_diagnosis', confidence: diagnosis.confidence },
+        ...(agronomy?.provenance ?? []),
       ],
     };
     await deps.snapshots.save(snapshot);
 
     return { observation, snapshot };
+  };
+}
+
+/** Runs the engine up to the day of the observation, if it can. */
+async function agronomicStateFor(
+  deps: RecordObservationDependencies,
+  campaign: Campaign,
+  plot: Plot,
+  date: LocalDate,
+): Promise<TwinDayState | undefined> {
+  if (!deps.agronomy || !plot.location) return undefined;
+
+  const weather = await deps.agronomy.weather.weatherBetween(
+    campaign.plantingDate,
+    date,
+    plot.location,
+  );
+  if (weather.length === 0) return undefined;
+
+  const result = runBehaviorEngine({
+    campaign,
+    location: plot.location,
+    coefficients: deps.agronomy.coefficients,
+    weather,
+  });
+  return result.latest;
+}
+
+function agronomicFields(state: TwinDayState | undefined) {
+  if (!state) return {};
+  return {
+    accumulatedGdd: state.accumulatedGdd,
+    ...(state.phenologicalStage === undefined
+      ? {}
+      : { phenologicalStage: state.phenologicalStage }),
+    waterDepletion: state.waterBalance.depletion,
+    underWaterStress: state.waterBalance.underStress,
+    ...(state.lateBlightRisk === undefined
+      ? {}
+      : {
+          lateBlightSeverity: state.lateBlightRisk.accumulatedSeverity,
+          sprayAdvised: state.lateBlightRisk.sprayAdvised,
+        }),
   };
 }

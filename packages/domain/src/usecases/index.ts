@@ -5,6 +5,12 @@ export type {
 } from './ApplyImageRetention.js';
 export { closeCampaignUseCase } from './CloseCampaign.js';
 export type { CloseCampaignDependencies, CloseCampaignInput } from './CloseCampaign.js';
+export { computeCampaignStateUseCase } from './ComputeCampaignState.js';
+export type {
+  CampaignState,
+  ComputeCampaignStateDependencies,
+  UnavailableReason,
+} from './ComputeCampaignState.js';
 export { createPlotUseCase } from './CreatePlot.js';
 export type { CreatePlotDependencies, CreatePlotInput } from './CreatePlot.js';
 export { ensurePersistentStorageUseCase } from './EnsurePersistentStorage.js';
@@ -27,6 +33,11 @@ export type {
   RecordObservationInput,
   RecordObservationResult,
 } from './RecordObservation.js';
+export { recordWeatherObservationUseCase } from './RecordWeatherObservation.js';
+export type {
+  RecordWeatherObservationDependencies,
+  RecordWeatherObservationInput,
+} from './RecordWeatherObservation.js';
 export { startCampaignUseCase } from './StartCampaign.js';
 export type { StartCampaignDependencies, StartCampaignInput } from './StartCampaign.js';
 export { updatePlotDetailsUseCase } from './UpdatePlotDetails.js';
