@@ -52,16 +52,31 @@ pnpm lint         # ESLint: fronteras entre capas y prohibiciones del dominio
 pnpm typecheck    # tsc --build --force
 pnpm test         # Vitest
 pnpm test:arch    # los guardianes arquitectónicos (ver abajo)
-pnpm build        # tsc --build
+pnpm build        # tsc --build y después el build de la PWA
+pnpm test:e2e     # Playwright contra el build de producción
 ```
+
+Para levantar la PWA en desarrollo:
+
+```bash
+pnpm --filter @agrotwin/app dev
+```
+
+**Sobre el orden de los comandos.** `app` consume `domain` e `infrastructure`
+por el campo `exports` de cada paquete, que apunta a su `dist/`. Por eso los
+scripts `build`, `dev` y `test:e2e` de `app` ejecutan `tsc --build` antes que
+Vite: en un clon recién hecho no hay `dist/` que resolver. Si cambias algo en
+`domain` o en `infrastructure` mientras el servidor de desarrollo está
+corriendo, vuelve a lanzar `dev` para que Vite vea el código nuevo.
 
 ## Estructura
 
 ```
 packages/domain/           TypeScript PURO — el gemelo. Sin DOM, sin Node.
 packages/infrastructure/   Adaptadores. Es donde el mundo exterior toca el dominio.
+packages/app/              React + Vite = la PWA. Único sitio que conoce a ambos.
 services/edge-hub/         Hub FastAPI en LAN. Hoy: solo el spike R-02.
-docs/adr/                  Decisiones de arquitectura (0001–0006).
+docs/adr/                  Decisiones de arquitectura (0001–0008).
 docs/nfr/                  Dispositivo de referencia y mediciones.
 docs/spikes/               Resultados de pruebas de viabilidad.
 ```

@@ -730,6 +730,29 @@ DoD verificado ejecutando comandos:
   Mantener dos almacenes de imágenes tras el mismo puerto habría sido código
   muerto desde el primer día.
 
+**Defecto de CI heredado de la Fase 1, corregido (2026-09-22).**
+
+El job `e2e` del workflow estaba **en rojo en `main`** desde el cierre de la
+Fase 1. Es un job independiente del job `verify`, así que nunca ejecutaba
+`tsc --build`; y `app` resuelve `@agrotwin/domain` y `@agrotwin/infrastructure`
+por el campo `exports` de cada paquete, que apunta a `dist/`. En un checkout
+recién hecho no hay `dist/`, y Rolldown falla al resolver el import.
+
+**Por qué no lo vi:** el cierre de la Fase 1 dice «CI en verde». Lo verifiqué
+ejecutando los comandos **en mi máquina**, donde `dist/` ya existía de una
+compilación anterior. Nunca miré el resultado en GitHub. Las pasadas de E2E de
+la Fase 2 pasaron por la misma razón: el entorno local no era un clon limpio.
+
+**Corrección:** la dependencia deja de estar en el orden de los jobs y pasa a
+estar declarada en los scripts de `packages/app`: `build`, `dev` y `test:e2e`
+ejecutan `tsc --build ../..` antes que Vite. Verificado borrando todos los
+`dist/` y `*.tsbuildinfo` y ejecutando la suite completa desde cero: lint,
+typecheck, 126 tests, 4/4 guardianes, build y **10/10 E2E**.
+
+**Lo que cambia en cómo trabajo:** a partir de aquí, «verde» significa verde en
+CI, no verde en esta máquina. Cuando un comando dependa de artefactos
+generados, lo verifico borrándolos primero.
+
 **Fase 1 — cierre (2026-09-21)**
 
 El camino completo funciona: crear parcela → foto por la cámara del sistema →
@@ -743,6 +766,10 @@ DoD verificado ejecutando comandos:
   completo con el servidor apagado.
 - App shell: **331.56 KiB** de precache frente a los 8 MB de RNF-02.
 - Lighthouse móvil: rendimiento 99, accesibilidad **100**, buenas prácticas 100.
+
+> **Corrección (2026-09-22).** Donde este cierre dice «CI en verde», debía
+> decir «verde en la máquina de desarrollo». El job `e2e` estaba en rojo en
+> GitHub. Causa y arreglo, en el cierre de la Fase 2.
 
 **Decisiones cerradas (Fase 1):**
 

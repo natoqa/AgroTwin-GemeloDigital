@@ -84,9 +84,12 @@ jobs:
       - name: Install Chromium for Playwright
         run: pnpm --filter @agrotwin/app exec playwright install --with-deps chromium
 
-      # Builds first, then serves the build: the service worker only exists in
-      # a production build, so this is what makes the offline test meaningful.
-      - name: Vertical slice end to end
+      # This job is independent of `verify`, so nothing has run `tsc --build`
+      # here. The app's own scripts do it: `app` resolves `@agrotwin/domain`
+      # and `@agrotwin/infrastructure` through their `exports`, which point at
+      # `dist/`, and a fresh checkout has none. Leaving the ordering to the job
+      # is what made this job red while every local run passed.
+      - name: End to end
         run: pnpm test:e2e
 
       - name: Keep the report when it fails
