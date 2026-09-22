@@ -1,16 +1,10 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import {
-  Coefficients,
-  LocalDate,
-  createPlotLocation,
-  epochMillis,
-  plotId,
-} from '@agrotwin/domain';
+import { Coefficients, LocalDate, createPlot, epochMillis, plotId } from '@agrotwin/domain';
 import type {
   CoefficientDocument,
   DailyWeather,
-  PlotLocation,
+  Plot,
   WeatherObservation,
   WeatherPort,
 } from '@agrotwin/domain';
@@ -22,8 +16,13 @@ import { NormalsWeatherAdapter } from './NormalsWeatherAdapter.js';
 import { ManualWeatherAdapter } from './ManualWeatherAdapter.js';
 import { CachedNetworkWeatherAdapter } from './CachedNetworkWeatherAdapter.js';
 
-const LOCATION: PlotLocation = createPlotLocation({ latitude: -8.11, longitude: -78.01 });
-const PLOT = plotId('plot-1');
+const PLOT_ID = plotId('plot-1');
+const PLOT: Plot = createPlot({
+  id: PLOT_ID,
+  name: 'Chacra de arriba',
+  createdAt: epochMillis(1_790_000_000_000),
+  location: { latitude: -8.11, longitude: -78.01 },
+});
 const DAY = LocalDate.of(2026, 9, 10);
 
 const normalsDocument = (synthetic: boolean): ClimateNormalsDocument => ({
@@ -111,7 +110,7 @@ describe('NormalsWeatherAdapter', () => {
       ClimateNormals.fromDocument(normalsDocument(false)),
     );
 
-    const day = await adapter.weatherFor(DAY, LOCATION);
+    const day = await adapter.weatherFor(DAY, PLOT);
 
     expect(day?.maxTemperature).toBe(18);
     expect(day?.source).toBe('climate_normals');
@@ -122,7 +121,7 @@ describe('NormalsWeatherAdapter', () => {
       ClimateNormals.fromDocument(normalsDocument(true)),
     );
 
-    const day = await adapter.weatherFor(DAY, LOCATION);
+    const day = await adapter.weatherFor(DAY, PLOT);
 
     // The whole reason the source is a separate value (CLAUDE.md §9).
     expect(day?.source).toBe('synthetic_normals');
@@ -134,7 +133,7 @@ describe('NormalsWeatherAdapter', () => {
       ClimateNormals.fromDocument(normalsDocument(false)),
     );
 
-    const days = await adapter.weatherBetween(DAY, DAY.plusDays(4), LOCATION);
+    const days = await adapter.weatherBetween(DAY, DAY.plusDays(4), PLOT);
 
     expect(days).toHaveLength(5);
     expect(days[0]?.date.toString()).toBe('2026-09-10');
@@ -148,11 +147,11 @@ describe('ManualWeatherAdapter', () => {
   const adapterWith = async (observation?: WeatherObservation) => {
     const repository = new DexieWeatherObservationRepository(db);
     if (observation) await repository.save(observation);
-    return new ManualWeatherAdapter(base, repository, COEFFICIENTS, PLOT);
+    return new ManualWeatherAdapter(base, repository, COEFFICIENTS);
   };
 
   const answer = (overrides: Partial<WeatherObservation> = {}): WeatherObservation => ({
-    plotId: PLOT,
+    plotId: PLOT_ID,
     date: DAY,
     rainfall: 'none',
     coldNight: false,
@@ -163,7 +162,7 @@ describe('ManualWeatherAdapter', () => {
   it('passes the normals straight through on a day nobody answered about', async () => {
     const adapter = await adapterWith();
 
-    const day = await adapter.weatherFor(DAY, LOCATION);
+    const day = await adapter.weatherFor(DAY, PLOT);
 
     expect(day?.rainfall).toBe(4);
     expect(day?.source).toBe('climate_normals');
@@ -172,7 +171,7 @@ describe('ManualWeatherAdapter', () => {
   it('takes "it did not rain" as a fact, with no coefficient involved', async () => {
     const adapter = await adapterWith(answer({ rainfall: 'none' }));
 
-    const day = await adapter.weatherFor(DAY, LOCATION);
+    const day = await adapter.weatherFor(DAY, PLOT);
 
     expect(day?.rainfall).toBe(0);
     // Nothing provisional was used, so the farmer's own confidence stands.
@@ -183,7 +182,7 @@ describe('ManualWeatherAdapter', () => {
   it('scales the normals for "a little" and "a lot", and pays for it', async () => {
     const little = await (await adapterWith(answer({ rainfall: 'a_little' }))).weatherFor(
       DAY,
-      LOCATION,
+      PLOT,
     );
     expect(little?.rainfall).toBeCloseTo(2, 10);
     // 0.55 × 0.6, because a provisional factor was used.
@@ -192,7 +191,7 @@ describe('ManualWeatherAdapter', () => {
     db.weatherObservations.clear();
     const heavy = await (await adapterWith(answer({ rainfall: 'a_lot' }))).weatherFor(
       DAY,
-      LOCATION,
+      PLOT,
     );
     expect(heavy?.rainfall).toBeCloseTo(8, 10);
   });
@@ -200,7 +199,7 @@ describe('ManualWeatherAdapter', () => {
   it('drops the night temperature when the farmer reports a cold night', async () => {
     const adapter = await adapterWith(answer({ coldNight: true }));
 
-    const day = await adapter.weatherFor(DAY, LOCATION);
+    const day = await adapter.weatherFor(DAY, PLOT);
 
     expect(day?.minTemperature).toBeCloseTo(2, 10);
   });
@@ -208,7 +207,7 @@ describe('ManualWeatherAdapter', () => {
   it('compounds the discount when an answer leans on two provisional factors', async () => {
     const adapter = await adapterWith(answer({ rainfall: 'a_lot', coldNight: true }));
 
-    const day = await adapter.weatherFor(DAY, LOCATION);
+    const day = await adapter.weatherFor(DAY, PLOT);
 
     // 0.55 × 0.6 × 0.6
     expect(day?.confidence).toBeCloseTo(0.198, 10);
@@ -221,9 +220,9 @@ describe('ManualWeatherAdapter', () => {
     };
     const repository = new DexieWeatherObservationRepository(db);
     await repository.save(answer({ coldNight: true }));
-    const adapter = new ManualWeatherAdapter(flat, repository, COEFFICIENTS, PLOT);
+    const adapter = new ManualWeatherAdapter(flat, repository, COEFFICIENTS);
 
-    const day = await adapter.weatherFor(DAY, LOCATION);
+    const day = await adapter.weatherFor(DAY, PLOT);
 
     // Hargreaves takes the root of (max − min); an inversion here would be NaN.
     expect(day?.minTemperature).toBeLessThanOrEqual(day?.maxTemperature ?? 0);
@@ -232,9 +231,9 @@ describe('ManualWeatherAdapter', () => {
   it('applies answers across a whole range', async () => {
     const repository = new DexieWeatherObservationRepository(db);
     await repository.save(answer({ date: DAY.plusDays(1), rainfall: 'none' }));
-    const adapter = new ManualWeatherAdapter(base, repository, COEFFICIENTS, PLOT);
+    const adapter = new ManualWeatherAdapter(base, repository, COEFFICIENTS);
 
-    const days = await adapter.weatherBetween(DAY, DAY.plusDays(2), LOCATION);
+    const days = await adapter.weatherBetween(DAY, DAY.plusDays(2), PLOT);
 
     expect(days.map((day) => day.rainfall)).toEqual([4, 0, 4]);
   });
@@ -246,7 +245,7 @@ describe('CachedNetworkWeatherAdapter', () => {
   it('falls back to the wrapped source when there is no fetcher at all', async () => {
     const adapter = new CachedNetworkWeatherAdapter(base);
 
-    expect((await adapter.weatherFor(DAY, LOCATION))?.source).toBe('climate_normals');
+    expect((await adapter.weatherFor(DAY, PLOT))?.source).toBe('climate_normals');
   });
 
   it('prefers a fetched day and remembers it', async () => {
@@ -258,8 +257,8 @@ describe('CachedNetworkWeatherAdapter', () => {
       },
     });
 
-    expect((await adapter.weatherFor(DAY, LOCATION))?.source).toBe('network_weather_cache');
-    expect((await adapter.weatherFor(DAY, LOCATION))?.source).toBe('network_weather_cache');
+    expect((await adapter.weatherFor(DAY, PLOT))?.source).toBe('network_weather_cache');
+    expect((await adapter.weatherFor(DAY, PLOT))?.source).toBe('network_weather_cache');
     // Fetched once; served from memory afterwards, which is what makes the day
     // survive the network going away.
     expect(calls).toBe(1);
@@ -272,7 +271,7 @@ describe('CachedNetworkWeatherAdapter', () => {
       },
     });
 
-    expect((await adapter.weatherFor(DAY, LOCATION))?.source).toBe('climate_normals');
+    expect((await adapter.weatherFor(DAY, PLOT))?.source).toBe('climate_normals');
   });
 
   it('serves a cached day even after the fetcher starts failing', async () => {
@@ -284,16 +283,16 @@ describe('CachedNetworkWeatherAdapter', () => {
       },
     });
 
-    await adapter.weatherFor(DAY, LOCATION);
+    await adapter.weatherFor(DAY, PLOT);
     working = false;
 
-    expect((await adapter.weatherFor(DAY, LOCATION))?.source).toBe('network_weather_cache');
+    expect((await adapter.weatherFor(DAY, PLOT))?.source).toBe('network_weather_cache');
   });
 
   it('fills a range from whatever each day can offer', async () => {
     const adapter = new CachedNetworkWeatherAdapter(base);
 
-    expect(await adapter.weatherBetween(DAY, DAY.plusDays(2), LOCATION)).toHaveLength(3);
+    expect(await adapter.weatherBetween(DAY, DAY.plusDays(2), PLOT)).toHaveLength(3);
   });
 });
 

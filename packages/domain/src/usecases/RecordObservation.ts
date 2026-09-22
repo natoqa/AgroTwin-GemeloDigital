@@ -137,11 +137,7 @@ async function agronomicStateFor(
 ): Promise<TwinDayState | undefined> {
   if (!deps.agronomy || !plot.location) return undefined;
 
-  const weather = await deps.agronomy.weather.weatherBetween(
-    campaign.plantingDate,
-    date,
-    plot.location,
-  );
+  const weather = await deps.agronomy.weather.weatherBetween(campaign.plantingDate, date, plot);
   if (weather.length === 0) return undefined;
 
   const result = runBehaviorEngine({

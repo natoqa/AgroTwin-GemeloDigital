@@ -1,4 +1,4 @@
-import type { DailyWeather, LocalDate, PlotLocation, WeatherPort } from '@agrotwin/domain';
+import type { DailyWeather, LocalDate, Plot, WeatherPort } from '@agrotwin/domain';
 
 /**
  * An opportunistic cache in front of a network source, and never a requirement.
@@ -16,7 +16,7 @@ import type { DailyWeather, LocalDate, PlotLocation, WeatherPort } from '@agrotw
  * out or is simply absent costs nothing: the wrapped source answers.
  */
 export interface WeatherFetcher {
-  fetch(date: LocalDate, location: PlotLocation): Promise<DailyWeather | undefined>;
+  fetch(date: LocalDate, plot: Plot): Promise<DailyWeather | undefined>;
 }
 
 export class CachedNetworkWeatherAdapter implements WeatherPort {
@@ -27,41 +27,38 @@ export class CachedNetworkWeatherAdapter implements WeatherPort {
     private readonly fetcher?: WeatherFetcher,
   ) {}
 
-  async weatherFor(date: LocalDate, location: PlotLocation): Promise<DailyWeather | undefined> {
+  async weatherFor(date: LocalDate, plot: Plot): Promise<DailyWeather | undefined> {
     const key = date.toString();
 
     const cached = this.cache.get(key);
     if (cached) return cached;
 
-    const fetched = await this.tryFetch(date, location);
+    const fetched = await this.tryFetch(date, plot);
     if (fetched) {
       this.cache.set(key, fetched);
       return fetched;
     }
 
-    return this.fallback.weatherFor(date, location);
+    return this.fallback.weatherFor(date, plot);
   }
 
   async weatherBetween(
     from: LocalDate,
     to: LocalDate,
-    location: PlotLocation,
+    plot: Plot,
   ): Promise<readonly DailyWeather[]> {
     const days: DailyWeather[] = [];
     for (let cursor = from; cursor.daysUntil(to) >= 0; cursor = cursor.plusDays(1)) {
-      const day = await this.weatherFor(cursor, location);
+      const day = await this.weatherFor(cursor, plot);
       if (day) days.push(day);
     }
     return days;
   }
 
-  private async tryFetch(
-    date: LocalDate,
-    location: PlotLocation,
-  ): Promise<DailyWeather | undefined> {
+  private async tryFetch(date: LocalDate, plot: Plot): Promise<DailyWeather | undefined> {
     if (!this.fetcher) return undefined;
     try {
-      return await this.fetcher.fetch(date, location);
+      return await this.fetcher.fetch(date, plot);
     } catch {
       // No network is the normal case here, not an error worth surfacing.
       return undefined;

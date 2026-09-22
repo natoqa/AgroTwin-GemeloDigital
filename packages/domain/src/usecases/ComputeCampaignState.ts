@@ -61,7 +61,7 @@ export function computeCampaignStateUseCase(deps: ComputeCampaignStateDependenci
 
     const today = LocalDate.fromEpochMillis(deps.clock.now());
     const until = campaign.closedOn ?? today;
-    const weather = await deps.weather.weatherBetween(campaign.plantingDate, until, plot.location);
+    const weather = await deps.weather.weatherBetween(campaign.plantingDate, until, plot);
     if (weather.length === 0) {
       return { campaign, plot, days: [], unavailable: 'no_weather' };
     }

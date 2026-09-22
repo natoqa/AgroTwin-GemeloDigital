@@ -3,8 +3,7 @@ import type {
   Coefficients,
   DailyWeather,
   LocalDate,
-  PlotId,
-  PlotLocation,
+  Plot,
   WeatherObservation,
   WeatherObservationRepositoryPort,
   WeatherPort,
@@ -33,24 +32,23 @@ export class ManualWeatherAdapter implements WeatherPort {
     private readonly base: WeatherPort,
     private readonly observations: WeatherObservationRepositoryPort,
     private readonly coefficients: Coefficients,
-    private readonly plotId: PlotId,
   ) {}
 
-  async weatherFor(date: LocalDate, location: PlotLocation): Promise<DailyWeather | undefined> {
-    const baseline = await this.base.weatherFor(date, location);
+  async weatherFor(date: LocalDate, plot: Plot): Promise<DailyWeather | undefined> {
+    const baseline = await this.base.weatherFor(date, plot);
     if (!baseline) return undefined;
 
-    const answer = await this.observations.findByDate(this.plotId, date);
+    const answer = await this.observations.findByDate(plot.id, date);
     return answer ? this.apply(baseline, answer) : baseline;
   }
 
   async weatherBetween(
     from: LocalDate,
     to: LocalDate,
-    location: PlotLocation,
+    plot: Plot,
   ): Promise<readonly DailyWeather[]> {
-    const baseline = await this.base.weatherBetween(from, to, location);
-    const answers = await this.observations.listBetween(this.plotId, from, to);
+    const baseline = await this.base.weatherBetween(from, to, plot);
+    const answers = await this.observations.listBetween(plot.id, from, to);
     const byDate = new Map(answers.map((answer) => [answer.date.toString(), answer]));
 
     return baseline.map((day) => {

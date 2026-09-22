@@ -6,6 +6,7 @@ import { CampaignScreen } from './features/campaigns/CampaignScreen';
 import { PlotScreen } from './features/plots/PlotScreen';
 import { PlotsScreen } from './features/plots/PlotsScreen';
 import { TwinScreen } from './features/twin/TwinScreen';
+import { WeatherScreen } from './features/weather/WeatherScreen';
 
 type View =
   | { name: 'plots' }
@@ -13,6 +14,7 @@ type View =
   | { name: 'campaigns'; plot: Plot }
   | { name: 'twin'; plot: Plot; campaign: Campaign }
   | { name: 'capture'; plot: Plot; campaign: Campaign }
+  | { name: 'weather'; plot: Plot; campaign: Campaign }
   | { name: 'backup' };
 
 /**
@@ -42,8 +44,10 @@ export function App() {
 
     case 'plot':
       return (
+        // No `key={revision}` here on purpose: remounting on save would wipe
+        // the screen's own state, including the "saved" confirmation the
+        // farmer needs to see. The plot arrives fresh through the prop.
         <PlotScreen
-          key={revision}
           plot={view.plot}
           onOpenCampaigns={() => setView({ name: 'campaigns', plot: view.plot })}
           onSaved={(plot) => {
@@ -78,6 +82,15 @@ export function App() {
         />
       );
 
+    case 'weather':
+      return (
+        <WeatherScreen
+          plot={view.plot}
+          onSaved={refresh}
+          onBack={() => setView({ name: 'twin', plot: view.plot, campaign: view.campaign })}
+        />
+      );
+
     case 'backup':
       return (
         <BackupScreen
@@ -92,6 +105,7 @@ export function App() {
           key={revision}
           campaign={view.campaign}
           onCapture={() => setView({ name: 'capture', plot: view.plot, campaign: view.campaign })}
+          onWeather={() => setView({ name: 'weather', plot: view.plot, campaign: view.campaign })}
           onClosed={(campaign) => {
             refresh();
             setView({ name: 'twin', plot: view.plot, campaign });

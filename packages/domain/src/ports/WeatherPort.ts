@@ -1,5 +1,5 @@
 import type { LocalDate } from '../model/LocalDate.js';
-import type { PlotLocation } from '../model/PlotLocation.js';
+import type { Plot } from '../model/Plot.js';
 import type { DailyWeather } from '../model/Weather.js';
 
 /**
@@ -12,13 +12,13 @@ import type { DailyWeather } from '../model/Weather.js';
  *
  * A source returns `undefined` for a day it knows nothing about. It does not
  * return a fabricated average.
+ *
+ * The whole `Plot` is passed, not just its coordinates, because the layers
+ * need different parts of it: normals need the place, and the farmer's own
+ * answers are keyed by which plot they were standing in.
  */
 export interface WeatherPort {
-  weatherFor(date: LocalDate, location: PlotLocation): Promise<DailyWeather | undefined>;
+  weatherFor(date: LocalDate, plot: Plot): Promise<DailyWeather | undefined>;
   /** Oldest first. Days the source cannot supply are simply absent. */
-  weatherBetween(
-    from: LocalDate,
-    to: LocalDate,
-    location: PlotLocation,
-  ): Promise<readonly DailyWeather[]>;
+  weatherBetween(from: LocalDate, to: LocalDate, plot: Plot): Promise<readonly DailyWeather[]>;
 }
