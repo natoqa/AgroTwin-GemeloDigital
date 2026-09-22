@@ -2,8 +2,8 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 /**
- * Vitest 5 replaced `vitest.workspace.ts` with `test.projects`; CLAUDE.md §15
- * asks for the former by name, and this is the supported equivalent.
+ * Vitest 5 replaced `vitest.workspace.ts` with `test.projects`, which CLAUDE.md
+ * §15 names as the Phase 0 deliverable.
  *
  * Packages are aliased to their sources so the suite runs without a prior
  * build, while production resolution still goes through `dist` via exports.

@@ -100,10 +100,13 @@ y dejar que el lockfile la congele. Una excepción, deliberada y verificada:
   `typescript-eslint@8.70.1` declara el peer `typescript >=4.8.4 <6.1.0`. Se fija
   la versión estable más alta que todo el toolchain admite. Revisar cuando
   `typescript-eslint` publique soporte para TypeScript 7.
-- **Vitest 5** sustituyó `vitest.workspace.ts` por `test.projects`; `CLAUDE.md`
-  §15 pide el archivo por su nombre antiguo y `vitest.config.ts` es su
-  equivalente soportado.
+- **Vitest 5** sustituyó `vitest.workspace.ts` por `test.projects`. `CLAUDE.md`
+  §15 ya pide `vitest.config.ts`, que es su equivalente soportado.
 
 ## Licencia
 
-Pendiente de definir por el equipo.
+[MIT](./LICENSE).
+
+La licencia cubre el código de este repositorio. **No cubre los datasets**
+(PlantVillage, PlantDoc) ni las normales climatológicas de SENAMHI: cada uno
+conserva la suya y verificarlas es una tarea del equipo humano (`CLAUDE.md` §19).
