@@ -18,4 +18,8 @@ export class DexiePlotRepository implements PlotRepositoryPort {
     const records = await this.db.plots.orderBy('createdAt').reverse().toArray();
     return records.map(toPlot);
   }
+
+  async deleteAll(): Promise<void> {
+    await this.db.plots.clear();
+  }
 }
