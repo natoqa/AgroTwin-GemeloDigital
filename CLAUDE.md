@@ -580,7 +580,8 @@ confirmación explícita.
 5. **Cerrar y detenerse.** Reporte de cierre con: qué se hizo, qué quedó fuera,
    desviaciones respecto al plan y por qué, mediciones, estado de riesgos, y
    preguntas para la siguiente fase. Actualiza la Bitácora. Propón el merge a
-   `main` y la etiqueta `fase-N`. **Espera mi confirmación.**
+   `main` y la etiqueta `fase-N`; ese merge es el único momento en que algo se
+   publica, y solo `main` y la etiqueta (§17). **Espera mi confirmación.**
 
 ### Cuándo detenerte y preguntar (aunque estés a mitad de fase)
 
@@ -611,6 +612,10 @@ confirmación explícita.
 - Cada componente del dominio se entrega con sus tests en la misma fase.
 - Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`).
 - Rama por fase; `main` siempre en verde.
+- **`main` es la única rama que se publica.** Las ramas `fase/N-nombre` son
+  locales: existen para el flujo de §16 y no se empujan a `origin`. Al cerrar la
+  fase se fusiona con `--no-ff` y se empujan **solo** `main` y la etiqueta
+  `fase-N`. Nunca `git push` de una rama de fase.
 - Python: `ruff` para lint y formato, `pytest`, tipado con anotaciones.
 
 ---
@@ -684,6 +689,9 @@ DoD verificado ejecutando comandos:
   (`pnpm test:arch`), no con una demostración manual de una sola vez.
 - **(Fase 0)** `packages/app` no se creó: ningún entregable de la Fase 0 lo
   necesita. Nace en la Fase 1.
+- **(Fase 0)** `main` es la única rama que se publica; las ramas de fase se
+  quedan en local (§16 paso 5, §17). Decisión tuya del 2026-09-21, tomada
+  después de empujar `fase/0-andamiaje`, que por eso hay que retirar del remoto.
 - **(Fase 0)** Licencia **MIT** para el código del repositorio (`LICENSE`). No
   cubre los datasets ni las normales de SENAMHI, que conservan la suya.
   Revisar si la UNT reclama una política de propiedad distinta para trabajos de
