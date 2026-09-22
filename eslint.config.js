@@ -121,6 +121,22 @@ export default tseslint.config(
     },
   },
 
+  // --- Service workers run in their own global scope ----------------------
+  {
+    files: ['**/sw.js'],
+    languageOptions: {
+      globals: {
+        self: 'readonly',
+        caches: 'readonly',
+        clients: 'readonly',
+        fetch: 'readonly',
+        URL: 'readonly',
+        Request: 'readonly',
+        Response: 'readonly',
+      },
+    },
+  },
+
   // --- Tooling and config files run on Node -------------------------------
   {
     files: ['*.js', '*.mjs', 'scripts/**/*.mjs', '**/*.config.ts'],

@@ -1,0 +1,25 @@
+[project]
+name = "agrotwin-edge-hub"
+version = "0.0.0"
+description = "AgroTwin LAN edge hub. Phase 0 scope: R-02 spike only."
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.uv]
+package = false
