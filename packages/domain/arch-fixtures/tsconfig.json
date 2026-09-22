@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "rootDir": ".",
+    "outDir": "../dist-arch-fixtures"
+  },
+  "include": ["uses-browser-api.ts"],
+  "references": []
+}

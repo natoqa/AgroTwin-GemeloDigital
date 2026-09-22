@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>AgroTwin · Spike R-02</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f6f7f4;
+        --fg: #16210f;
+        --card: #ffffff;
+        --line: #d6ddcd;
+        --ok: #1d6f2f;
+        --bad: #9a1b1b;
+        --wait: #7a6a12;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #10140d;
+          --fg: #eef2e8;
+          --card: #1a2016;
+          --line: #2f3a28;
+          --ok: #6ede84;
+          --bad: #ff8a8a;
+          --wait: #e3cf62;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 24px 16px 48px;
+        background: var(--bg);
+        color: var(--fg);
+        font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      main { max-width: 34rem; margin: 0 auto; }
+      h1 { font-size: 1.35rem; margin: 0 0 4px; }
+      p.sub { margin: 0 0 24px; opacity: 0.75; font-size: 0.95rem; }
+      ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+      li {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px 16px;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .mark { font-size: 1.3rem; line-height: 1.2; min-width: 1.4rem; }
+      .label { font-weight: 600; }
+      .detail { font-size: 0.85rem; opacity: 0.8; word-break: break-word; }
+      .ok .mark { color: var(--ok); }
+      .bad .mark { color: var(--bad); }
+      .wait .mark { color: var(--wait); }
+      footer { margin-top: 28px; font-size: 0.8rem; opacity: 0.7; }
+      code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Spike R-02 — HTTPS en LAN</h1>
+      <p class="sub">
+        Verifica que un Chrome de Android confía en el certificado mkcert del hub y
+        registra un service worker sobre él.
+      </p>
+
+      <ul id="checks">
+        <li class="wait" data-check="secure"><span class="mark">…</span><span><span class="label">Contexto seguro</span><br /><span class="detail">comprobando</span></span></li>
+        <li class="wait" data-check="sw"><span class="mark">…</span><span><span class="label">Service worker registrado</span><br /><span class="detail">comprobando</span></span></li>
+        <li class="wait" data-check="api"><span class="mark">…</span><span><span class="label">API del mismo origen</span><br /><span class="detail">comprobando</span></span></li>
+        <li class="wait" data-check="isolated"><span class="mark">…</span><span><span class="label">Aislamiento de origen (COOP/COEP)</span><br /><span class="detail">comprobando</span></span></li>
+        <li class="wait" data-check="sab"><span class="mark">…</span><span><span class="label">SharedArrayBuffer (multihilo WASM)</span><br /><span class="detail">comprobando</span></span></li>
+      </ul>
+
+      <footer>
+        Origen: <code id="origin"></code><br />
+        Navegador: <code id="ua"></code>
+      </footer>
+    </main>
+
+    <script type="module">
+      const set = (name, ok, detail) => {
+        const li = document.querySelector(`[data-check="${name}"]`);
+        li.className = ok ? 'ok' : 'bad';
+        li.querySelector('.mark').textContent = ok ? '✓' : '✗';
+        li.querySelector('.detail').textContent = detail;
+      };
+
+      document.getElementById('origin').textContent = location.origin;
+      document.getElementById('ua').textContent = navigator.userAgent;
+
+      set(
+        'secure',
+        window.isSecureContext,
+        window.isSecureContext
+          ? 'el navegador acepta el certificado del hub'
+          : 'el certificado no es de confianza en este dispositivo',
+      );
+
+      set(
+        'isolated',
+        window.crossOriginIsolated === true,
+        window.crossOriginIsolated ? 'COOP/COEP activos' : 'no aislado; el multihilo WASM no estará disponible',
+      );
+
+      set(
+        'sab',
+        typeof SharedArrayBuffer !== 'undefined',
+        typeof SharedArrayBuffer !== 'undefined'
+          ? 'disponible; el multihilo es alcanzable como mejora'
+          : 'no disponible; la línea base single-thread + SIMD sigue siendo válida',
+      );
+
+      try {
+        const response = await fetch('/api/health');
+        const body = await response.json();
+        set('api', response.ok, `GET /api/health → ${response.status} ${JSON.stringify(body)}`);
+      } catch (error) {
+        set('api', false, `falló: ${error instanceof Error ? error.message : String(error)}`);
+      }
+
+      if (!('serviceWorker' in navigator)) {
+        set('sw', false, 'este navegador no expone serviceWorker');
+      } else {
+        try {
+          const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+          await navigator.serviceWorker.ready;
+          set('sw', true, `registrado con alcance ${registration.scope}`);
+        } catch (error) {
+          set('sw', false, `falló: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+    </script>
+  </body>
+</html>

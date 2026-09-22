@@ -106,7 +106,10 @@ alguna, detente y plantéalo como propuesta de ADR.
 
 **Política de versiones:** usa la versión estable vigente de cada dependencia,
 verifícala antes de fijarla, y deja que el lockfile la congele. No escribas
-versiones de memoria.
+versiones de memoria. Cuando un peer dependency impida la última estable, fija
+la más alta que todo el toolchain admita y registra la razón en la Bitácora: hoy
+`typescript-eslint` declara `typescript >=4.8.4 <6.1.0`, y ese peer —no una
+preferencia— es lo que mantiene a TypeScript en la línea 6.x.
 
 **Convención de idioma:** código, identificadores, commits y comentarios en
 inglés. UI y documentación de usuario en español. Documentos del curso
@@ -129,11 +132,13 @@ AgroTwin-GemeloDigital/
 │   └── threat-model.md
 ├── packages/
 │   ├── domain/                 # TypeScript PURO — el gemelo
-│   │   └── src/{model,ports,agronomy,twin,learning,usecases,errors}
+│   │   ├── src/{model,ports,agronomy,twin,learning,usecases,errors}
+│   │   └── arch-fixtures/      # código que DEBE ser rechazado (ver §7)
 │   ├── infrastructure/         # adaptadores
 │   │   └── src/{persistence,inference,capture,crypto,weather,sensors,federation,system}
 │   └── app/                    # React + Vite = la PWA
 │       └── src/{composition,routes,features,ui,stores,i18n}
+├── scripts/arch-guards.mjs     # ejecuta los fixtures y falla si alguno se acepta
 ├── services/edge-hub/          # Python, FastAPI
 ├── ml/pipeline/                # Python, entrenamiento offline
 ├── data/climate/               # normales climatológicas (provistas por el equipo)
@@ -164,6 +169,11 @@ Las reglas se hacen cumplir con herramientas, no con disciplina.
 | Los puertos se definen en el dominio | Cada interfaz de `ports/` vive en `domain`; su implementación, en `infrastructure`. |
 | Composition root único | `packages/app/src/composition/` es el único lugar donde `domain` e `infrastructure` se conocen. |
 | Cobertura del dominio | Umbral del 85% sobre `packages/domain`, **activo desde la Fase 3**. Antes de la Fase 3 el CI no lo exige. |
+| Las reglas de arriba siguen vigentes | `pnpm test:arch` (`scripts/arch-guards.mjs`) compila y lintea los fixtures de `packages/domain/arch-fixtures/`, que **deben** ser rechazados, y falla si alguno se acepta. Corre en CI: una regla que se debilite pone el CI en rojo. |
+
+Los fixtures de `arch-fixtures/` son la única excepción a la prohibición de
+archivos que no compilan: existen precisamente para no compilar. Están excluidos
+del `tsconfig` del paquete y de la pasada normal de ESLint.
 
 ---
 
@@ -370,9 +380,9 @@ cifrado en reposo (Fase 7), y cualquier renegociación de RNF.
 | ID | Riesgo | Severidad | Fase | Estado |
 |----|--------|-----------|------|--------|
 | R-01 | Sin fuente fiable de datos climáticos | Crítica | 0→3 | Mitigación definida (sección 9) |
-| R-02 | HTTPS en LAN / contenido mixto | Crítica | 0→6 | Spike en Fase 0 |
+| R-02 | HTTPS en LAN / contenido mixto | Crítica | 0→6 | Spike verde en escritorio; **pendiente prueba en teléfono** |
 | R-03 | ORT Web no entrena | Crítica | — | Resuelto por ADR-0005 |
-| R-04 | Multihilo WASM exige COOP/COEP | Alta | 5, 7 | Línea base single-thread |
+| R-04 | Multihilo WASM exige COOP/COEP | Alta | 5, 7 | Línea base single-thread; el hub emite COOP/COEP y en escritorio habilita SAB |
 | R-05 | Android 8–9 congelado en Chrome 138 | Alta | 0 | Resuelto en restricción 4 |
 | R-06 | Peso de ONNX Runtime Web vs. RNF-02 | Alta | 5 | RNF-02 ya excluye el runtime; medir |
 | R-07 | Desalojo de almacenamiento | Alta | 2, 7 | `storage.persist()` + retención + respaldo |
@@ -381,7 +391,7 @@ cifrado en reposo (Fase 7), y cualquier renegociación de RNF.
 | R-10 | Flower incompatible con navegador | Media | — | Resuelto por ADR-0006 |
 | R-11 | Sesgo de fondo de PlantVillage | Media | 5 | PlantDoc + augmentación + evaluación de campo |
 | R-12 | Coeficientes sin fuente | Media | 3 | Campo `source` obligatorio |
-| R-13 | Lógica agronómica filtrándose a React | Baja | 0 | Mitigado estructuralmente |
+| R-13 | Lógica agronómica filtrándose a React | Baja | 0 | Mitigado: `pnpm test:arch` lo verifica en CI |
 
 Actualiza la columna Estado al cerrar cada fase.
 
@@ -404,11 +414,16 @@ resultado se mostró.
   tipos de Node.
 - `eslint.config.js` (flat config) con boundaries y las restricciones de la
   sección 7.
-- `vitest.workspace.ts`.
-- CI (`.github/workflows/ci.yml`): lint, typecheck, test, build. **Sin** umbral
-  de cobertura todavía.
+- `vitest.config.ts` con `test.projects` (Vitest 5 retiró `vitest.workspace.ts`).
+- `packages/domain/arch-fixtures/` y `scripts/arch-guards.mjs`: los DoD negativos
+  de abajo se verifican ejecutándolos, no con una demostración manual.
+- CI (`.github/workflows/ci.yml`): lint, typecheck, test, guardianes
+  arquitectónicos, build. **Sin** umbral de cobertura todavía.
 - `packages/domain/src/ports/ClockPort.ts`, `packages/domain/src/index.ts` y un
   test que confirme que el dominio compila y corre en Node.
+- `packages/infrastructure` con `SystemClockAdapter`: la implementación mínima
+  que prueba la dirección de dependencias `infrastructure → domain` de punta a
+  punta. Sin un adaptador real, la regla de fronteras no está demostrada.
 - `docs/adr/0000-template.md` y ADR 0001–0006.
 - `docs/nfr/reference-device.md` con los datos del dispositivo de referencia (si
   el equipo aún no los dio, entrada bloqueante marcada `TODO`).
@@ -635,9 +650,25 @@ Cuando una fase las necesite, pídelas explícitamente y no las simules.
 
 > Mantenida por Claude Code. Actualizar al cerrar cada fase.
 
-**Fase actual:** 0 — plan aprobado con ajustes, pendiente de ejecución.
+**Fase actual:** 0 — Andamiaje, **cerrada** el 2026-09-21: fusionada a `main` y
+etiquetada `fase-0`. La Fase 1 no empieza sin confirmación explícita.
+
+**Fase 0 — cierre (2026-09-21)**
+
+Repositorio inicializado en `C:/Users/User/Desktop/AgroTwin-GemeloDigital`,
+remoto `github.com/natoqa/AgroTwin-GemeloDigital`, rama `fase/0-andamiaje`.
+
+DoD verificado ejecutando comandos:
+
+- `pnpm install && pnpm lint && pnpm typecheck && pnpm test && pnpm build` en verde.
+- 13 tests en 3 archivos, en verde.
+- Los cuatro guardianes arquitectónicos rechazan lo que deben (`pnpm test:arch`,
+  4/4) y quedan en CI como regresión permanente, no como demostración única.
+- Spike R-02 documentado con resultado real de escritorio y pendiente humano
+  explícito para el teléfono.
 
 **Decisiones cerradas:**
+
 - ADR dividido en 0001–0006.
 - pnpm vía Corepack.
 - Modelo dividido: backbone INT8 congelado + cabeza float32 en TypeScript.
@@ -647,10 +678,53 @@ Cuando una fase las necesite, pídelas explícitamente y no las simules.
 - Restricción de tiempo: se prohíben `Date.now()` y `new Date()` sin argumentos,
   no el tipo `Date`.
 - Entrada manual de clima cualitativa.
+- **(Fase 0)** Fronteras entre capas con `eslint-plugin-boundaries`, reforzadas
+  con `no-restricted-imports` para los especificadores de paquete del workspace.
+- **(Fase 0)** Los DoD negativos se verifican con fixtures ejecutables
+  (`pnpm test:arch`), no con una demostración manual de una sola vez.
+- **(Fase 0)** `packages/app` no se creó: ningún entregable de la Fase 0 lo
+  necesita. Nace en la Fase 1.
+- **(Fase 0)** Licencia **MIT** para el código del repositorio (`LICENSE`). No
+  cubre los datasets ni las normales de SENAMHI, que conservan la suya.
+  Revisar si la UNT reclama una política de propiedad distinta para trabajos de
+  curso; si así fuera, este es el único archivo que cambia.
+
+**Auditoría del documento contra el código (2026-09-21).** Antes del merge se
+compararon los archivos existentes con este documento. Cuatro discrepancias, las
+cuatro resueltas corrigiendo el documento, no el código:
+
+| # | Discrepancia | Resolución |
+|---|---|---|
+| D-1 | §15 pedía `vitest.workspace.ts`, retirado por Vitest 5 | §15 pide ahora `vitest.config.ts` con `test.projects` |
+| D-2 | `scripts/arch-guards.mjs` y `arch-fixtures/` no aparecían en §6 ni §7 | Añadidos a ambas |
+| D-3 | §5 exigía la última estable; TypeScript está en 6.x por el peer de `typescript-eslint` | §5 admite el tope por peer y obliga a registrarlo |
+| D-4 | `packages/infrastructure` existía sin estar entre los entregables de §15 | Añadido a §15 con su justificación |
+
+Se verificó además que `services/edge-hub/certs/` **no** está versionado: la
+clave privada del hub no ha entrado nunca al repositorio.
 
 **Pendientes humanos:**
-- [ ] Dispositivo de referencia: `TODO` (marca, modelo, Android, Chrome).
-- [ ] Prueba del spike R-02 en teléfono real.
-- [ ] Normales climatológicas de SENAMHI (necesarias antes de Fase 3).
 
-**Desviaciones registradas:** ninguna.
+- [ ] Dispositivo de referencia: `TODO` (marca, modelo, Android, Chrome).
+      Bloquea el cierre de las fases 1, 4, 5 y 7.
+      Ver `docs/nfr/reference-device.md`.
+- [ ] Prueba del spike R-02 en teléfono real. Procedimiento y tabla vacía en
+      `docs/spikes/r02-https-lan.md`. Mientras no se ejecute, ADR-0003 sigue
+      condicionado.
+- [ ] Normales climatológicas de SENAMHI (necesarias antes de Fase 3).
+- [x] Licencia del repositorio: MIT (2026-09-21). Queda por verificar la
+      licencia de uso de los datasets, que es una tarea distinta (§19).
+
+**Desviaciones registradas:**
+
+- **TypeScript 6.0.3 en lugar de 7.0.2.** La 7 es la etiqueta `latest`, pero
+  `typescript-eslint@8.70.1` declara el peer `typescript >=4.8.4 <6.1.0`. Se fija
+  la estable más alta que todo el toolchain admite. Revisar cuando
+  `typescript-eslint` publique soporte para TypeScript 7.
+- **`test.projects` en `vitest.config.ts` en lugar de `vitest.workspace.ts`.**
+  Vitest 5 retiró el archivo de workspace. Ya no es una desviación: la sección 15
+  se corrigió para pedir el archivo que existe.
+- **Corepack con shims en directorio de usuario.** `corepack enable` falla con
+  `EPERM` sobre la carpeta de instalación de Node sin privilegios de
+  administrador; los shims se instalaron en `%APPDATA%/npm`, que ya estaba en el
+  PATH. Documentado en el README.

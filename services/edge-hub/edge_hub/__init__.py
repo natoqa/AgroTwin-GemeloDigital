@@ -1,0 +1,1 @@
+"""AgroTwin LAN edge hub."""
