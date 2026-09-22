@@ -14,7 +14,8 @@
     "typecheck": "tsc --build --force",
     "test": "vitest run",
     "test:arch": "node scripts/arch-guards.mjs",
-    "build": "tsc --build",
+    "test:e2e": "pnpm --filter @agrotwin/app test:e2e",
+    "build": "tsc --build && pnpm --filter @agrotwin/app build",
     "clean": "tsc --build --clean"
   },
   "devDependencies": {

@@ -1,0 +1,29 @@
+@import 'tailwindcss';
+
+/*
+ * Phase 1 is deliberately unstyled: the slice has to work before it can look
+ * like anything. The design system — large targets, high contrast, icons over
+ * text, readable in direct sun — is a Phase 4 deliverable.
+ *
+ * Only two things are set here, because they are accessibility floors rather
+ * than decoration: a minimum touch target of 48px (CLAUDE.md section 3) and a
+ * base font that does not shrink on a small screen.
+ */
+@theme {
+  --color-agrotwin: #1d6f2f;
+}
+
+button,
+input[type='file'],
+input[type='text'] {
+  min-height: 48px;
+}
+
+/*
+ * Two adjacent buttons with no gap read as one target, which is a usability
+ * bug even in an unstyled phase: a mis-tap on a 48px target is a wrong action,
+ * not a cosmetic complaint.
+ */
+button + button {
+  margin-left: 12px;
+}

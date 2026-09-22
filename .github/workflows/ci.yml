@@ -60,3 +60,39 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  e2e:
+    name: end-to-end (Playwright)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Only Chromium: the supported matrix is Chrome on Android.
+      - name: Install Chromium for Playwright
+        run: pnpm --filter @agrotwin/app exec playwright install --with-deps chromium
+
+      # Builds first, then serves the build: the service worker only exists in
+      # a production build, so this is what makes the offline test meaningful.
+      - name: Vertical slice end to end
+        run: pnpm test:e2e
+
+      - name: Keep the report when it fails
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-report
+          path: packages/app/playwright-report/
+          retention-days: 7

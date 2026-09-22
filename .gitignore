@@ -39,3 +39,4 @@ services/edge-hub/certs/
 
 # Model artifacts are produced by ml/pipeline, not versioned here
 *.onnx
+dist-types/
