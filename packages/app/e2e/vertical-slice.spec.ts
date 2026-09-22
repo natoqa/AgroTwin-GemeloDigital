@@ -1,18 +1,10 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { Server } from 'node:http';
-import { fileURLToPath } from 'node:url';
+import { EXPECTED_LABELS, TODAY, runSlice } from './flows.js';
 import { startStaticServer, stopStaticServer } from './staticServer.js';
 
 const PORT = 4173;
-const LEAF = fileURLToPath(new URL('./fixtures/leaf.png', import.meta.url));
-
-const EXPECTED_LABELS = [
-  'Planta sana',
-  'Posible tizón temprano',
-  'Posible tizón tardío',
-  'No pude identificarlo',
-];
 
 let server: Server | undefined;
 
@@ -64,23 +56,6 @@ async function waitForOfflineReadiness(page: Page): Promise<void> {
     .toBe(true);
 }
 
-/** Creates a plot, photographs it, and returns the label the twin board shows. */
-async function runSlice(page: Page, plotName: string): Promise<string> {
-  await page.getByTestId('plot-name').fill(plotName);
-  await page.getByTestId('create-plot').click();
-
-  await expect(page.getByTestId('plot-list')).toContainText(plotName);
-  await page.getByTestId('open-plot').filter({ hasText: plotName }).click();
-
-  await expect(page.getByTestId('no-snapshots')).toBeVisible();
-  await page.getByTestId('go-capture').click();
-
-  await page.getByTestId('photo-input').setInputFiles(LEAF);
-
-  await expect(page.getByTestId('latest-snapshot')).toBeVisible();
-  return ((await page.getByTestId('diagnosis-label').textContent()) ?? '').trim();
-}
-
 test.describe('vertical slice', () => {
   test('a photograph of a plot becomes a snapshot of the twin', async ({ page }) => {
     await page.goto('/');
@@ -88,12 +63,12 @@ test.describe('vertical slice', () => {
     const label = await runSlice(page, 'Chacra de arriba');
 
     expect(EXPECTED_LABELS).toContain(label);
-    // The diagnosis is never alone: it appears as part of the twin's state.
+    // The diagnosis is never alone: it appears as part of the twin's state,
+    // inside the campaign it belongs to.
     await expect(page.getByTestId('confidence')).toBeVisible();
     await expect(page.getByTestId('provenance')).toBeVisible();
-    await expect(page.getByTestId('snapshot-history')).toContainText(
-      new Date().toISOString().slice(0, 10),
-    );
+    await expect(page.getByTestId('campaign-day')).toContainText('Día 0');
+    await expect(page.getByTestId('snapshot-history')).toContainText(TODAY);
   });
 
   test('the snapshot survives a reload, because it lives in the device', async ({ page }) => {
@@ -102,7 +77,21 @@ test.describe('vertical slice', () => {
 
     await page.reload();
     await page.getByTestId('open-plot').filter({ hasText: 'Chacra persistente' }).click();
+    await page.getByTestId('go-campaigns').click();
+    await page.getByTestId('open-campaign').first().click();
 
+    await expect(page.getByTestId('latest-snapshot')).toBeVisible();
+  });
+
+  test('a harvested campaign stops taking photographs', async ({ page }) => {
+    await page.goto('/');
+    await runSlice(page, 'Chacra cosechada');
+
+    await page.getByTestId('close-campaign').click();
+
+    await expect(page.getByTestId('campaign-heading')).toContainText('cosechada');
+    await expect(page.getByTestId('go-capture')).toHaveCount(0);
+    // The history the twin built is still there after the harvest.
     await expect(page.getByTestId('latest-snapshot')).toBeVisible();
   });
 
