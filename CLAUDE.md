@@ -370,9 +370,9 @@ cifrado en reposo (Fase 7), y cualquier renegociación de RNF.
 | ID | Riesgo | Severidad | Fase | Estado |
 |----|--------|-----------|------|--------|
 | R-01 | Sin fuente fiable de datos climáticos | Crítica | 0→3 | Mitigación definida (sección 9) |
-| R-02 | HTTPS en LAN / contenido mixto | Crítica | 0→6 | Spike en Fase 0 |
+| R-02 | HTTPS en LAN / contenido mixto | Crítica | 0→6 | Spike verde en escritorio; **pendiente prueba en teléfono** |
 | R-03 | ORT Web no entrena | Crítica | — | Resuelto por ADR-0005 |
-| R-04 | Multihilo WASM exige COOP/COEP | Alta | 5, 7 | Línea base single-thread |
+| R-04 | Multihilo WASM exige COOP/COEP | Alta | 5, 7 | Línea base single-thread; el hub emite COOP/COEP y en escritorio habilita SAB |
 | R-05 | Android 8–9 congelado en Chrome 138 | Alta | 0 | Resuelto en restricción 4 |
 | R-06 | Peso de ONNX Runtime Web vs. RNF-02 | Alta | 5 | RNF-02 ya excluye el runtime; medir |
 | R-07 | Desalojo de almacenamiento | Alta | 2, 7 | `storage.persist()` + retención + respaldo |
@@ -381,7 +381,7 @@ cifrado en reposo (Fase 7), y cualquier renegociación de RNF.
 | R-10 | Flower incompatible con navegador | Media | — | Resuelto por ADR-0006 |
 | R-11 | Sesgo de fondo de PlantVillage | Media | 5 | PlantDoc + augmentación + evaluación de campo |
 | R-12 | Coeficientes sin fuente | Media | 3 | Campo `source` obligatorio |
-| R-13 | Lógica agronómica filtrándose a React | Baja | 0 | Mitigado estructuralmente |
+| R-13 | Lógica agronómica filtrándose a React | Baja | 0 | Mitigado: `pnpm test:arch` lo verifica en CI |
 
 Actualiza la columna Estado al cerrar cada fase.
 
@@ -635,9 +635,25 @@ Cuando una fase las necesite, pídelas explícitamente y no las simules.
 
 > Mantenida por Claude Code. Actualizar al cerrar cada fase.
 
-**Fase actual:** 0 — plan aprobado con ajustes, pendiente de ejecución.
+**Fase actual:** 0 — Andamiaje. Implementada y verificada; pendiente de tu
+confirmación para hacer merge a `main` y etiquetar `fase-0`.
+
+**Fase 0 — cierre (2026-09-21)**
+
+Repositorio inicializado en `C:/Users/User/Desktop/AgroTwin-GemeloDigital`,
+remoto `github.com/natoqa/AgroTwin-GemeloDigital`, rama `fase/0-andamiaje`.
+
+DoD verificado ejecutando comandos:
+
+- `pnpm install && pnpm lint && pnpm typecheck && pnpm test && pnpm build` en verde.
+- 13 tests en 3 archivos, en verde.
+- Los cuatro guardianes arquitectónicos rechazan lo que deben (`pnpm test:arch`,
+  4/4) y quedan en CI como regresión permanente, no como demostración única.
+- Spike R-02 documentado con resultado real de escritorio y pendiente humano
+  explícito para el teléfono.
 
 **Decisiones cerradas:**
+
 - ADR dividido en 0001–0006.
 - pnpm vía Corepack.
 - Modelo dividido: backbone INT8 congelado + cabeza float32 en TypeScript.
@@ -647,10 +663,34 @@ Cuando una fase las necesite, pídelas explícitamente y no las simules.
 - Restricción de tiempo: se prohíben `Date.now()` y `new Date()` sin argumentos,
   no el tipo `Date`.
 - Entrada manual de clima cualitativa.
+- **(Fase 0)** Fronteras entre capas con `eslint-plugin-boundaries`, reforzadas
+  con `no-restricted-imports` para los especificadores de paquete del workspace.
+- **(Fase 0)** Los DoD negativos se verifican con fixtures ejecutables
+  (`pnpm test:arch`), no con una demostración manual de una sola vez.
+- **(Fase 0)** `packages/app` no se creó: ningún entregable de la Fase 0 lo
+  necesita. Nace en la Fase 1.
 
 **Pendientes humanos:**
-- [ ] Dispositivo de referencia: `TODO` (marca, modelo, Android, Chrome).
-- [ ] Prueba del spike R-02 en teléfono real.
-- [ ] Normales climatológicas de SENAMHI (necesarias antes de Fase 3).
 
-**Desviaciones registradas:** ninguna.
+- [ ] Dispositivo de referencia: `TODO` (marca, modelo, Android, Chrome).
+      Bloquea el cierre de las fases 1, 4, 5 y 7.
+      Ver `docs/nfr/reference-device.md`.
+- [ ] Prueba del spike R-02 en teléfono real. Procedimiento y tabla vacía en
+      `docs/spikes/r02-https-lan.md`. Mientras no se ejecute, ADR-0003 sigue
+      condicionado.
+- [ ] Normales climatológicas de SENAMHI (necesarias antes de Fase 3).
+- [ ] Definir la licencia del repositorio.
+
+**Desviaciones registradas:**
+
+- **TypeScript 6.0.3 en lugar de 7.0.2.** La 7 es la etiqueta `latest`, pero
+  `typescript-eslint@8.70.1` declara el peer `typescript >=4.8.4 <6.1.0`. Se fija
+  la estable más alta que todo el toolchain admite. Revisar cuando
+  `typescript-eslint` publique soporte para TypeScript 7.
+- **`test.projects` en `vitest.config.ts` en lugar de `vitest.workspace.ts`.**
+  Vitest 5 retiró el archivo de workspace; la sección 15 lo pide por su nombre
+  antiguo.
+- **Corepack con shims en directorio de usuario.** `corepack enable` falla con
+  `EPERM` sobre la carpeta de instalación de Node sin privilegios de
+  administrador; los shims se instalaron en `%APPDATA%/npm`, que ya estaba en el
+  PATH. Documentado en el README.
