@@ -13,3 +13,4 @@ export type { ObservationRepositoryPort } from './ObservationRepositoryPort.js';
 export type { PlotRepositoryPort } from './PlotRepositoryPort.js';
 export type { SnapshotRepositoryPort } from './SnapshotRepositoryPort.js';
 export type { StoragePort, StorageStatus } from './StoragePort.js';
+export type { WeatherPort } from './WeatherPort.js';
