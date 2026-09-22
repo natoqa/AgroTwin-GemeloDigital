@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "./packages/domain" },
-    { "path": "./packages/infrastructure" }
+    { "path": "./packages/infrastructure" },
+    { "path": "./packages/app" }
   ]
 }

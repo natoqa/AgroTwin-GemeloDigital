@@ -52,6 +52,9 @@ export default tseslint.config(
   {
     ignores: [
       '**/dist/**',
+      '**/dist-types/**',
+      '**/playwright-report/**',
+      '**/test-results/**',
       '**/node_modules/**',
       '**/coverage/**',
       '**/*.tsbuildinfo',
@@ -139,9 +142,14 @@ export default tseslint.config(
 
   // --- Tooling and config files run on Node -------------------------------
   {
-    files: ['*.js', '*.mjs', 'scripts/**/*.mjs', '**/*.config.ts'],
+    files: ['*.js', '*.mjs', '**/scripts/**/*.mjs', '**/*.config.ts'],
     languageOptions: {
-      globals: { console: 'readonly', process: 'readonly', URL: 'readonly' },
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        URL: 'readonly',
+        Buffer: 'readonly',
+      },
     },
     rules: { 'no-console': 'off' },
   },

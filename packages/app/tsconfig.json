@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client", "vite-plugin-pwa/client"],
+    "jsx": "react-jsx",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "rootDir": ".",
+    "outDir": "dist-types",
+    "emitDeclarationOnly": true
+  },
+  "include": ["src/**/*", "e2e/**/*", "vite.config.ts", "playwright.config.ts"],
+  "references": [{ "path": "../domain" }, { "path": "../infrastructure" }]
+}
