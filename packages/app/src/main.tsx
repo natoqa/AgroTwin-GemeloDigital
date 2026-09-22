@@ -13,7 +13,10 @@ if (!root) {
 createRoot(root).render(
   <StrictMode>
     <ContainerProvider container={createContainer()}>
-      <App />
+      {/* A single `main` landmark, so a screen reader can skip straight to the content. */}
+      <main>
+        <App />
+      </main>
     </ContainerProvider>
   </StrictMode>,
 );

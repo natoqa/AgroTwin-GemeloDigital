@@ -384,8 +384,8 @@ cifrado en reposo (Fase 7), y cualquier renegociación de RNF.
 | R-03 | ORT Web no entrena | Crítica | — | Resuelto por ADR-0005 |
 | R-04 | Multihilo WASM exige COOP/COEP | Alta | 5, 7 | Línea base single-thread; el hub emite COOP/COEP y en escritorio habilita SAB |
 | R-05 | Android 8–9 congelado en Chrome 138 | Alta | 0 | Resuelto en restricción 4 |
-| R-06 | Peso de ONNX Runtime Web vs. RNF-02 | Alta | 5 | RNF-02 ya excluye el runtime; medir |
-| R-07 | Desalojo de almacenamiento | Alta | 2, 7 | `storage.persist()` + retención + respaldo |
+| R-06 | Peso de ONNX Runtime Web vs. RNF-02 | Alta | 5 | RNF-02 ya excluye el runtime. Línea base Fase 1: 331.56 KiB de 8 MB |
+| R-07 | Desalojo de almacenamiento | Alta | 2, 7 | `storage.persist()` + retención + respaldo. **Activo:** la Fase 1 ya escribe fotos en IndexedDB sin protección |
 | R-08 | Origen de la clave de cifrado sin cuenta | Media | 7 | Clave no exportable + PIN opcional |
 | R-09 | Demo federada sin ganancia estadística | Media | 6 | Reencuadrado en alcance |
 | R-10 | Flower incompatible con navegador | Media | — | Resuelto por ADR-0006 |
@@ -451,10 +451,17 @@ red. PWA instalable con Workbox.
 **Fuera de esta fase:** diseño visual, agronomía real, inferencia real.
 
 **DoD:**
-- [ ] Prueba E2E Playwright que ejecuta el ciclo completo con el contexto en
-      modo offline.
-- [ ] Lighthouse: PWA instalable.
+- [x] Prueba E2E Playwright que ejecuta el ciclo completo sin red. Se apaga el
+      servidor HTTP además de poner el contexto en modo offline: en Chromium,
+      `context.setOffline()` corta por debajo del service worker y la prueba no
+      verificaría nada. 4/4 en verde.
+- [x] PWA instalable, verificada contra los criterios de Chrome en
+      `e2e/installable.spec.ts`. **Lighthouse 12 retiró la categoría PWA**, así
+      que el enunciado original de este punto ya no se puede ejecutar; ver
+      `docs/nfr/measurements.md`. El veredicto de Chrome exige un teléfono real.
 - [ ] Probado en el dispositivo de referencia (acción humana; registrar resultado).
+      Bloqueado: no hay dispositivo de ~2 GB. El Redmi Note 14 cubre la parte
+      funcional; la de rendimiento no.
 
 ### Fase 2 — Dominio y persistencia
 
@@ -655,8 +662,46 @@ Cuando una fase las necesite, pídelas explícitamente y no las simules.
 
 > Mantenida por Claude Code. Actualizar al cerrar cada fase.
 
-**Fase actual:** 0 — Andamiaje, **cerrada** el 2026-09-21: fusionada a `main` y
-etiquetada `fase-0`. La Fase 1 no empieza sin confirmación explícita.
+**Fase actual:** 1 — Rebanada vertical. Implementada y verificada en la rama
+local `fase/1-rebanada-vertical`; pendiente de tu confirmación para el merge a
+`main` y la etiqueta `fase-1`. La Fase 2 no empieza sin confirmación explícita.
+
+**Fase 1 — cierre (2026-09-21)**
+
+El camino completo funciona: crear parcela → foto por la cámara del sistema →
+`MockInferenceAdapter` → snapshot persistido en IndexedDB → estado del gemelo en
+pantalla, sin red.
+
+DoD verificado ejecutando comandos:
+
+- `pnpm lint && pnpm typecheck && pnpm test && pnpm test:arch && pnpm build` en verde.
+- 45 tests unitarios en 9 archivos; 4 E2E de Playwright, incluido el ciclo
+  completo con el servidor apagado.
+- App shell: **331.56 KiB** de precache frente a los 8 MB de RNF-02.
+- Lighthouse móvil: rendimiento 99, accesibilidad **100**, buenas prácticas 100.
+
+**Decisiones cerradas (Fase 1):**
+
+- Captura con `<input type="file" capture="environment">`, no `getUserMedia`.
+- Dexie real desde la Fase 1; las fotos van como blob en IndexedDB y OPFS llega
+  en la Fase 2 detrás del mismo `ImageStorePort`.
+- `TwinSnapshot` omite los campos agronómicos de §8.1 en lugar de rellenarlos
+  con ceros: un cero se leería como una medición.
+- `MockInferenceAdapter` es determinista (hash FNV-1a de los bytes). Un mock
+  aleatorio haría el E2E intermitente.
+- Zustand **no** se instaló: el estado de pantalla de esta fase es una variable.
+  Nace cuando una pantalla lo necesite.
+- El E2E corre contra el build de producción, nunca contra el dev server.
+
+**Desviaciones (Fase 1):**
+
+- **Lighthouse ya no audita la instalabilidad.** La categoría PWA desapareció en
+  Lighthouse 12; la 13.5.0 ofrece `accessibility, best-practices, performance,
+  seo, agentic-browsing`. El punto del DoD se sustituyó por una prueba E2E de
+  los criterios de Chrome, que corre en CI. Registrado en `measurements.md`.
+- **`context.setOffline()` de Playwright no sirve para probar una PWA.** En
+  Chromium falla la petición por debajo del service worker. La prueba apaga un
+  servidor HTTP propio, lo que además es más fiel.
 
 **Fase 0 — cierre (2026-09-21)**
 
