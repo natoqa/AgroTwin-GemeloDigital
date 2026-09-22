@@ -84,6 +84,17 @@ export class LocalDate {
     return era * 146_097 + dayOfEra - 719_468;
   }
 
+  /**
+   * Day of the year, 1 for 1 January.
+   *
+   * FAO-56 calls this `J` and every solar geometry term depends on it: the
+   * Earth-Sun distance, the solar declination and through them the
+   * extraterrestrial radiation.
+   */
+  dayOfYear(): number {
+    return this.toEpochDay() - LocalDate.of(this.year, 1, 1).toEpochDay() + 1;
+  }
+
   plusDays(days: number): LocalDate {
     return LocalDate.fromEpochDay(this.toEpochDay() + days);
   }

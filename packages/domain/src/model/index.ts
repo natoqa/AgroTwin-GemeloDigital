@@ -3,8 +3,28 @@ export type { EpochMillis } from './EpochMillis.js';
 export { campaignId, imageRef, observationId, plotId, snapshotId } from './Ids.js';
 export type { CampaignId, ImageRef, ObservationId, PlotId, SnapshotId } from './Ids.js';
 export { LocalDate } from './LocalDate.js';
-export { degrees, hectares, meters } from './Units.js';
-export type { Degrees, Hectares, Meters } from './Units.js';
+export {
+  DEGREES_TO_RADIANS,
+  EQUIVALENT_EVAPORATION_FACTOR,
+  asEquivalentEvaporation,
+  celsius,
+  degreeDays,
+  degrees,
+  hectares,
+  megajoulesPerSquareMeterPerDay,
+  meters,
+  millimeters,
+  toRadians,
+} from './Units.js';
+export type {
+  Celsius,
+  DegreeDays,
+  Degrees,
+  Hectares,
+  MegajoulesPerSquareMeterPerDay,
+  Meters,
+  Millimeters,
+} from './Units.js';
 export { createPlotLocation } from './PlotLocation.js';
 export type { PlotLocation, PlotLocationInput } from './PlotLocation.js';
 export { createPlot, updatePlotDetails } from './Plot.js';

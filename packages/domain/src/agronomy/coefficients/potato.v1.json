@@ -1,0 +1,106 @@
+{
+  "crop": "potato",
+  "version": "potato.v1",
+  "region": "Sierra de La Libertad, Peru",
+  "readme": "Every entry carries a source. An entry whose source starts with 'TODO' is provisional and reduces the confidence of any snapshot that uses it (CLAUDE.md 8.2). An entry with a null value is not known at all, and a model that needs it refuses to run rather than guessing. Full bibliography in docs/agronomy/sources.md.",
+  "entries": {
+    "gddBaseTemperature": {
+      "value": 7,
+      "unit": "degreeCelsius",
+      "source": "Sands, P.J., Hackett, C. & Nix, H.A. (1979). A model of the development and bulking of potatoes. Field Crops Research 2:309-331. Base temperature of 7 C, the basis of the widely used potato P-day formulation.",
+      "note": "Widely reproduced in potato phenology literature. Verified as the conventional base temperature; not measured for Andean cultivars."
+    },
+    "gddUpperTemperature": {
+      "value": null,
+      "unit": "degreeCelsius",
+      "source": "TODO: verificar fuente",
+      "note": "An upper cut-off caps the contribution of hot days. No value verified for this crop and region, so growing degree days are accumulated without a cap and the limitation is recorded instead of papered over."
+    },
+    "kcInitial": {
+      "value": 0.5,
+      "unit": "dimensionless",
+      "source": "Allen, R.G., Pereira, L.S., Raes, D. & Smith, M. (1998). FAO Irrigation and Drainage Paper No. 56, Table 12 (Roots and Tubers, Potato).",
+      "note": "The HTML edition leaves the Kc ini cell blank for potato; it inherits the group value 0.5 printed at the head of the Roots and Tubers block."
+    },
+    "kcMid": {
+      "value": 1.15,
+      "unit": "dimensionless",
+      "source": "FAO-56, Table 12 (Roots and Tubers, Potato)."
+    },
+    "kcEnd": {
+      "value": 0.75,
+      "unit": "dimensionless",
+      "source": "FAO-56, Table 12 (Roots and Tubers, Potato).",
+      "note": "FAO-56 footnote: about 0.40 for long season potatoes with vine kill. This file keeps the table value; vine kill is not modelled."
+    },
+    "maxCropHeight": {
+      "value": 0.6,
+      "unit": "meter",
+      "source": "FAO-56, Table 12 (Roots and Tubers, Potato)."
+    },
+    "rootingDepthMin": {
+      "value": 0.4,
+      "unit": "meter",
+      "source": "FAO-56, Table 22 (Roots and Tubers, Potato): Zr 0.4-0.6 m."
+    },
+    "rootingDepthMax": {
+      "value": 0.6,
+      "unit": "meter",
+      "source": "FAO-56, Table 22 (Roots and Tubers, Potato): Zr 0.4-0.6 m."
+    },
+    "depletionFraction": {
+      "value": 0.35,
+      "unit": "dimensionless",
+      "source": "FAO-56, Table 22 (Roots and Tubers, Potato): p = 0.35.",
+      "note": "Average fraction of total available soil water that can be depleted before the crop is stressed."
+    },
+    "stageLengthInitial": {
+      "value": 25,
+      "unit": "day",
+      "source": "TODO: verificar fuente",
+      "note": "Provisional: FAO-56 Table 11, potato, continental climate, planted May (25/30/45/30, total 130 days). FAO-56 publishes no row for the Peruvian Andes, so the region does not match and the value needs agronomic review."
+    },
+    "stageLengthDevelopment": {
+      "value": 30,
+      "unit": "day",
+      "source": "TODO: verificar fuente",
+      "note": "Provisional: FAO-56 Table 11, potato, continental climate, planted May."
+    },
+    "stageLengthMid": {
+      "value": 45,
+      "unit": "day",
+      "source": "TODO: verificar fuente",
+      "note": "Provisional: FAO-56 Table 11, potato, continental climate, planted May."
+    },
+    "stageLengthLate": {
+      "value": 30,
+      "unit": "day",
+      "source": "TODO: verificar fuente",
+      "note": "Provisional: FAO-56 Table 11, potato, continental climate, planted May."
+    },
+    "gddToEmergence": {
+      "value": null,
+      "unit": "degreeDay",
+      "source": "TODO: verificar fuente",
+      "note": "Thermal time from planting to emergence. No value verified for Andean cultivars; inventing one would feed every downstream stage with a number that looks measured."
+    },
+    "gddToTuberInitiation": {
+      "value": null,
+      "unit": "degreeDay",
+      "source": "TODO: verificar fuente",
+      "note": "Thermal time from planting to tuber initiation."
+    },
+    "gddToBulking": {
+      "value": null,
+      "unit": "degreeDay",
+      "source": "TODO: verificar fuente",
+      "note": "Thermal time from planting to the start of tuber bulking."
+    },
+    "gddToMaturity": {
+      "value": null,
+      "unit": "degreeDay",
+      "source": "TODO: verificar fuente",
+      "note": "Thermal time from planting to maturity."
+    }
+  }
+}
