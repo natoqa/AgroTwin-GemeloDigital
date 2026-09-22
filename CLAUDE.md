@@ -713,12 +713,14 @@ clave privada del hub no ha entrado nunca al repositorio.
 
 **Pendientes humanos:**
 
-- [ ] Dispositivo de referencia: `TODO` (marca, modelo, Android, Chrome).
-      Bloquea el cierre de las fases 1, 4, 5 y 7.
-      Ver `docs/nfr/reference-device.md`.
-- [ ] Prueba del spike R-02 en teléfono real. Procedimiento y tabla vacía en
-      `docs/spikes/r02-https-lan.md`. Mientras no se ejecute, ADR-0003 sigue
-      condicionado.
+- [ ] Dispositivo de referencia de ~2 GB: `TODO`. Se busca uno prestado.
+      Bloquea **solo las mediciones** de RNF (fases 5 y 7): lo funcional de las
+      fases 1 y 4 se cubre con el dispositivo de desarrollo (Redmi Note 14,
+      gama media, registrado como tal). Ver `docs/nfr/reference-device.md`.
+- [ ] Prueba del spike R-02 en teléfono real. **Desbloqueada**: el Redmi Note 14
+      sirve, porque la pregunta es binaria y no depende de la gama. Procedimiento
+      y tabla vacía en `docs/spikes/r02-https-lan.md`. Mientras no se ejecute,
+      ADR-0003 sigue condicionado.
 - [ ] Normales climatológicas de SENAMHI (necesarias antes de Fase 3).
 - [x] Licencia del repositorio: MIT (2026-09-21). Queda por verificar la
       licencia de uso de los datasets, que es una tarea distinta (§19).

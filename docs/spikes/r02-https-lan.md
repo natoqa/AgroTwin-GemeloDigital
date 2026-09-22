@@ -68,6 +68,11 @@ por cerrado.
 
 > **Bloqueante para cerrar R-02.** CLAUDE.md §19 lo asigna al equipo humano y
 > §16 prohíbe simularlo.
+>
+> **No hace falta el dispositivo de referencia.** La pregunta de R-02 es binaria
+> —¿confía Chrome en el certificado y registra el service worker?— y no depende
+> de la gama del teléfono. El Redmi Note 14 del equipo la responde. Ver
+> `docs/nfr/reference-device.md`.
 
 ### Procedimiento
 
@@ -83,8 +88,10 @@ por cerrado.
 6. Abrir en Chrome del teléfono, y probar **las dos** URLs:
    - `https://192.168.1.55:8443/`
    - `https://desktop-7h3n95j.local:8443/`
-7. Anotar las cinco comprobaciones de la pantalla y el user agent que muestra al
-   pie.
+7. Anotar las cinco comprobaciones de la pantalla. Debajo, la sección **Ficha
+   del dispositivo** reporta RAM aproximada, núcleos, pantalla, cuota de
+   almacenamiento y user agent completo; el botón *Copiar la ficha* lo deja en
+   el portapapeles para pegarlo en `docs/nfr/reference-device.md`.
 8. Repetir con el hub apagado tras la primera carga, para confirmar que la
    página sigue abriendo desde el service worker.
 

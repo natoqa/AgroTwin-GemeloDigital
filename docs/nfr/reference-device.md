@@ -32,6 +32,33 @@ El dispositivo debe representar al usuario real, no al equipo de desarrollo:
   regístrese como *dispositivo secundario*: la restricción 4 lo declara
   funcional pero limitado, y conviene poder demostrarlo.
 
+## Dispositivo de desarrollo (NO es el de referencia)
+
+> **Xiaomi Redmi Note 14.** Disponible desde el 2026-09-21.
+
+Gama media: del orden de 6–8 GB de RAM frente a los ~2 GB del objetivo. Sirve
+para **verificar que algo funciona**, no para medir cuánto tarda.
+
+| Uso | ¿Vale este teléfono? |
+|---|---|
+| Spike R-02 (confianza en mkcert, service worker) | **Sí.** La pregunta es binaria y no depende de la gama. |
+| Instalación de la PWA, Lighthouse (Fase 1) | Sí |
+| Revisión de accesibilidad y de interfaz (Fase 4) | Sí |
+| RNF-01, RNF-02, RNF-03, RNF-04 (Fase 5 y 7) | **No.** Daría números cómodos y engañosos. |
+
+Los campos concretos se rellenan tras la primera visita a la página del spike,
+que ya reporta RAM aproximada, núcleos, pantalla, cuota de almacenamiento y user
+agent, y ofrece un botón para copiarlo todo.
+
+| Campo | Valor |
+|---|---|
+| Marca y modelo | Xiaomi Redmi Note 14 (falta confirmar variante) |
+| RAM física | `TODO` — confirmar en `chrome://system` |
+| Versión de Android | `TODO` |
+| Versión de Chrome | `TODO` |
+| User agent completo | `TODO` |
+| SoC / CPU | `TODO` |
+
 ## Dispositivo secundario (Android 8–9, opcional)
 
 | Campo | Valor |
@@ -41,6 +68,9 @@ El dispositivo debe representar al usuario real, no al equipo de desarrollo:
 | Versión de Chrome | `TODO` (se espera 138, última publicada por Google para esas versiones) |
 
 ## Consecuencias de que siga pendiente
+
+Menos de las que parecía. El dispositivo de desarrollo cubre todo lo que es
+*funcional*; lo que bloquea es exclusivamente lo *cuantitativo*:
 
 - **Fase 1:** no se puede registrar la prueba en dispositivo real del DoD.
 - **Fase 4:** no se puede registrar la revisión de interfaz en dispositivo real.
