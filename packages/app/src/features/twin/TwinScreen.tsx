@@ -40,10 +40,12 @@ export function TwinScreen({
           <p data-testid="confidence">
             {confidenceLabel(latest.confidence)} ({Math.round(latest.confidence * 100)}%)
           </p>
-          <p data-testid="provenance">
-            Basado en: {latest.provenance.map((entry) => entry.field).join(', ')} — de la foto que
-            tomaste.
-          </p>
+          {/*
+            Provenance is shown as what the farmer recognises — "the photo you
+            took" — not as the field name behind it. The full breakdown, once
+            weather and crop stage feed in too, is a Phase 4 screen.
+          */}
+          <p data-testid="provenance">Basado en la foto que tomaste.</p>
           <p data-testid="pending-agronomy">
             Todavía sin clima ni etapa del cultivo: eso llega más adelante.
           </p>

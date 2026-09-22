@@ -18,3 +18,12 @@ input[type='file'],
 input[type='text'] {
   min-height: 48px;
 }
+
+/*
+ * Two adjacent buttons with no gap read as one target, which is a usability
+ * bug even in an unstyled phase: a mis-tap on a 48px target is a wrong action,
+ * not a cosmetic complaint.
+ */
+button + button {
+  margin-left: 12px;
+}
