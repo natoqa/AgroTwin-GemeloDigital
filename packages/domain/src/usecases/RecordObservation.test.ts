@@ -1,112 +1,54 @@
 import { describe, expect, it } from 'vitest';
-import { recordObservationUseCase } from './RecordObservation.js';
 import { epochMillis } from '../model/EpochMillis.js';
-import type { EpochMillis } from '../model/EpochMillis.js';
-import { imageRef, plotId } from '../model/Ids.js';
-import type { ImageRef, PlotId } from '../model/Ids.js';
+import { campaignId } from '../model/Ids.js';
+import { LocalDate } from '../model/LocalDate.js';
 import type { Diagnosis } from '../model/Diagnosis.js';
-import type { Plot } from '../model/Plot.js';
-import type { TwinSnapshot } from '../model/TwinSnapshot.js';
-import type { ImageStorePort } from '../ports/ImageStorePort.js';
-import type { InferencePort } from '../ports/InferencePort.js';
-import type { PlotRepositoryPort } from '../ports/PlotRepositoryPort.js';
-import type { SnapshotRepositoryPort } from '../ports/SnapshotRepositoryPort.js';
-import { PlotNotFoundError } from '../errors/PlotNotFoundError.js';
+import { CampaignNotActiveError } from '../errors/CampaignNotActiveError.js';
+import { CampaignNotFoundError } from '../errors/CampaignNotFoundError.js';
+import { fixedClock } from '../testing/doubles.js';
+import { createTestTwin } from '../testing/scenario.js';
 
 const AT = epochMillis(1_790_028_000_000); // 2026-09-21T22:00:00Z
-const PLOT: Plot = { id: plotId('plot-1'), name: 'Chacra de arriba', createdAt: epochMillis(0) };
-
-class InMemoryPlots implements PlotRepositoryPort {
-  constructor(private readonly plots: readonly Plot[]) {}
-  async save(): Promise<void> {}
-  async findById(id: PlotId): Promise<Plot | undefined> {
-    return this.plots.find((plot) => plot.id === id);
-  }
-  async listAll(): Promise<readonly Plot[]> {
-    return this.plots;
-  }
-}
-
-class InMemorySnapshots implements SnapshotRepositoryPort {
-  readonly saved: TwinSnapshot[] = [];
-  async save(snapshot: TwinSnapshot): Promise<void> {
-    this.saved.push(snapshot);
-  }
-  async listByPlot(id: PlotId): Promise<readonly TwinSnapshot[]> {
-    return this.saved.filter((snapshot) => snapshot.plotId === id);
-  }
-  async latestForPlot(id: PlotId): Promise<TwinSnapshot | undefined> {
-    return this.saved.filter((snapshot) => snapshot.plotId === id).at(-1);
-  }
-}
-
-class RecordingImages implements ImageStorePort {
-  readonly stored: ArrayBuffer[] = [];
-  async put(image: ArrayBuffer): Promise<ImageRef> {
-    this.stored.push(image);
-    return imageRef(`image-${this.stored.length}`);
-  }
-  async get(): Promise<ArrayBuffer | undefined> {
-    return this.stored[0];
-  }
-  async delete(): Promise<void> {}
-}
-
-const stubInference = (diagnosis: Diagnosis): InferencePort => ({
-  diagnose: async () => diagnosis,
-});
-
-const fixedClock = (at: EpochMillis) => ({ now: () => at });
-const fixedIds = (value: string) => ({ newId: () => value });
-
-const dependencies = (
-  diagnosis: Diagnosis,
-  overrides: { plots?: PlotRepositoryPort } = {},
-) => {
-  const snapshots = new InMemorySnapshots();
-  const images = new RecordingImages();
-  return {
-    deps: {
-      plots: overrides.plots ?? new InMemoryPlots([PLOT]),
-      snapshots,
-      images,
-      inference: stubInference(diagnosis),
-      clock: fixedClock(AT),
-      ids: fixedIds('snap-1'),
-    },
-    snapshots,
-    images,
-  };
-};
-
 const HEALTHY: Diagnosis = { class: 'healthy', confidence: 0.91, modelVersion: 'mock-1' };
 const REJECTED: Diagnosis = { class: 'rejected', confidence: 0.22, modelVersion: 'mock-1' };
 
-describe('recordObservationUseCase', () => {
-  it('turns a photograph into a snapshot of the twin', async () => {
-    const { deps, snapshots, images } = dependencies(HEALTHY);
-    const image = new ArrayBuffer(8);
+async function twinWithCampaign(diagnosis: Diagnosis) {
+  const twin = createTestTwin({ clock: fixedClock(AT), diagnosis });
+  const plot = await twin.createPlot({ name: 'Chacra de arriba' });
+  const campaign = await twin.startCampaign({
+    plotId: plot.id,
+    plantingDate: LocalDate.of(2026, 9, 1),
+  });
+  return { twin, plot, campaign };
+}
 
-    const snapshot = await recordObservationUseCase(deps)({
-      plotId: PLOT.id,
-      image,
+describe('recordObservationUseCase', () => {
+  it('turns a photograph into evidence and a state of the twin', async () => {
+    const { twin, plot, campaign } = await twinWithCampaign(HEALTHY);
+
+    const { observation, snapshot } = await twin.recordObservation({
+      campaignId: campaign.id,
+      image: new ArrayBuffer(64),
       contentType: 'image/jpeg',
     });
 
-    expect(snapshot.plotId).toBe(PLOT.id);
+    expect(observation.plotId).toBe(plot.id);
+    expect(observation.campaignId).toBe(campaign.id);
+    expect(observation.imageRef).toBeDefined();
+    expect(observation.thumbnailRef).toBeDefined();
+
+    expect(snapshot.campaignId).toBe(campaign.id);
+    expect(snapshot.observationId).toBe(observation.id);
     expect(snapshot.at).toBe(AT);
     expect(snapshot.date.toString()).toBe('2026-09-21');
     expect(snapshot.diagnosis).toEqual(HEALTHY);
-    expect(snapshot.imageRef).toBe('image-1');
-    expect(images.stored).toEqual([image]);
-    expect(snapshots.saved).toEqual([snapshot]);
   });
 
   it('carries the provenance and confidence of its only input', async () => {
-    const { deps } = dependencies(HEALTHY);
+    const { twin, campaign } = await twinWithCampaign(HEALTHY);
 
-    const snapshot = await recordObservationUseCase(deps)({
-      plotId: PLOT.id,
+    const { snapshot } = await twin.recordObservation({
+      campaignId: campaign.id,
       image: new ArrayBuffer(8),
       contentType: 'image/jpeg',
     });
@@ -117,11 +59,24 @@ describe('recordObservationUseCase', () => {
     ]);
   });
 
-  it('records a rejection as a snapshot too, with its low confidence', async () => {
-    const { deps, snapshots } = dependencies(REJECTED);
+  it('keeps the farmer note with the evidence', async () => {
+    const { twin, campaign } = await twinWithCampaign(HEALTHY);
 
-    const snapshot = await recordObservationUseCase(deps)({
-      plotId: PLOT.id,
+    const { observation } = await twin.recordObservation({
+      campaignId: campaign.id,
+      image: new ArrayBuffer(8),
+      contentType: 'image/jpeg',
+      note: 'hojas de la esquina baja',
+    });
+
+    expect(observation.note).toBe('hojas de la esquina baja');
+  });
+
+  it('records a rejection as history too, with its low confidence', async () => {
+    const { twin, campaign } = await twinWithCampaign(REJECTED);
+
+    const { snapshot } = await twin.recordObservation({
+      campaignId: campaign.id,
       image: new ArrayBuffer(8),
       contentType: 'image/jpeg',
     });
@@ -129,21 +84,36 @@ describe('recordObservationUseCase', () => {
     // A refusal is part of the twin's history, not a discarded attempt.
     expect(snapshot.diagnosis.class).toBe('rejected');
     expect(snapshot.confidence).toBe(0.22);
-    expect(snapshots.saved).toHaveLength(1);
+    expect(await twin.snapshots.listByCampaign(campaign.id)).toHaveLength(1);
   });
 
-  it('refuses to observe a plot that does not exist', async () => {
-    const { deps, snapshots, images } = dependencies(HEALTHY, { plots: new InMemoryPlots([]) });
+  it('refuses a campaign that does not exist, storing nothing', async () => {
+    const { twin } = await twinWithCampaign(HEALTHY);
 
     await expect(
-      recordObservationUseCase(deps)({
-        plotId: plotId('missing'),
+      twin.recordObservation({
+        campaignId: campaignId('missing'),
         image: new ArrayBuffer(8),
         contentType: 'image/jpeg',
       }),
-    ).rejects.toThrow(PlotNotFoundError);
+    ).rejects.toThrow(CampaignNotFoundError);
 
-    expect(snapshots.saved).toHaveLength(0);
-    expect(images.stored).toHaveLength(0);
+    expect(await twin.observations.listAll()).toHaveLength(0);
+    expect(twin.images.items.size).toBe(0);
+  });
+
+  it('refuses to add observations to a harvested campaign', async () => {
+    const { twin, campaign } = await twinWithCampaign(HEALTHY);
+    await twin.closeCampaign({ campaignId: campaign.id });
+
+    await expect(
+      twin.recordObservation({
+        campaignId: campaign.id,
+        image: new ArrayBuffer(8),
+        contentType: 'image/jpeg',
+      }),
+    ).rejects.toThrow(CampaignNotActiveError);
+
+    expect(await twin.observations.listAll()).toHaveLength(0);
   });
 });
