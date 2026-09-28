@@ -1,3 +1,5 @@
+export { adviseCampaignUseCase } from './AdviseCampaign.js';
+export type { AdviseCampaignDependencies, CampaignAdvice } from './AdviseCampaign.js';
 export { applyImageRetentionUseCase } from './ApplyImageRetention.js';
 export type {
   ApplyImageRetentionDependencies,
