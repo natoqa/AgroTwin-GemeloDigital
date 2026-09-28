@@ -157,7 +157,14 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
       weatherObservations,
       clock,
     }),
-    getCampaignTimeline: getCampaignTimelineUseCase({ plots, campaigns, observations, snapshots }),
+    getCampaignTimeline: getCampaignTimelineUseCase({
+      plots,
+      campaigns,
+      observations,
+      snapshots,
+      irrigations,
+      weatherObservations,
+    }),
     applyImageRetention: applyImageRetentionUseCase({ images, observations, clock }),
     ensurePersistentStorage: ensurePersistentStorageUseCase({ storage }),
     exportBackup: exportBackupUseCase({

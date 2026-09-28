@@ -76,7 +76,14 @@ export function createTestTwin(options: TestTwinOptions) {
       clock,
       ids,
     }),
-    getCampaignTimeline: getCampaignTimelineUseCase({ plots, campaigns, observations, snapshots }),
+    getCampaignTimeline: getCampaignTimelineUseCase({
+      plots,
+      campaigns,
+      observations,
+      snapshots,
+      irrigations,
+      weatherObservations,
+    }),
     applyImageRetention: applyImageRetentionUseCase({
       images,
       observations,
