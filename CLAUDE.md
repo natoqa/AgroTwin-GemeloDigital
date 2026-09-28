@@ -367,7 +367,7 @@ Un ADR por decisión, en `docs/adr/`, con estados `Propuesta`, `Aceptada`,
 | 0002 | Arquitectura hexagonal con dominio TypeScript puro | Aceptada |
 | 0003 | Hub local en LAN en lugar de P2P entre navegadores | Aceptada, condicionada al spike R-02 |
 | 0004 | Python fuera del dispositivo de borde | Aceptada |
-| 0005 | Backbone INT8 congelado + cabeza float32 entrenada en TypeScript | Aceptada |
+| 0005 | Backbone INT8 congelado + cabeza float32 entrenada en TypeScript | Aceptada; enmendada en Fase 5: INT8 solo en los pesos |
 | 0006 | FedAvg propio en FastAPI; Flower evaluado y descartado | Aceptada |
 | 0007 | Imágenes en OPFS con índice en IndexedDB y retención en el dominio | Aceptada |
 | 0008 | Respaldo como JSON versionado con miniaturas, sin originales | Aceptada |
@@ -388,12 +388,12 @@ renegociación de RNF.
 | R-03 | ORT Web no entrena | Crítica | — | Resuelto por ADR-0005 |
 | R-04 | Multihilo WASM exige COOP/COEP | Alta | 5, 7 | Línea base single-thread; el hub emite COOP/COEP y en escritorio habilita SAB |
 | R-05 | Android 8–9 congelado en Chrome 138 | Alta | 0 | Resuelto en restricción 4 |
-| R-06 | Peso de ONNX Runtime Web vs. RNF-02 | Alta | 5 | RNF-02 ya excluye el runtime. Línea base Fase 4: 433.02 KiB de 8 MB |
+| R-06 | Peso de ONNX Runtime Web vs. RNF-02 | Alta | 5 | **Mitigado.** App shell 515.51 KiB; el WASM (14.2 MB, 3.7 MB con gzip) y el modelo quedan fuera del precache y se descargan en un paso explícito (D1) |
 | R-07 | Desalojo de almacenamiento | Alta | 2, 7 | **Mitigado en Fase 2:** `storage.persist()` en el onboarding, retención de originales (ADR-0007) y respaldo a archivo (ADR-0008). Queda la prueba de recuperación ante desalojo simulado (Fase 7) |
 | R-08 | Origen de la clave de cifrado sin cuenta | Media | 7 | Clave no exportable + PIN opcional |
 | R-09 | Demo federada sin ganancia estadística | Media | 6 | Reencuadrado en alcance |
 | R-10 | Flower incompatible con navegador | Media | — | Resuelto por ADR-0006 |
-| R-11 | Sesgo de fondo de PlantVillage | Media | 5 | PlantDoc + augmentación + evaluación de campo |
+| R-11 | Sesgo de fondo de PlantVillage | Media | 5 | **Activo, medido.** Cambio de fondo + augmentación aplicados; aun así F1 de tizones 0.993 en laboratorio frente a 0.629 en PlantDoc. En campo el umbral acepta el 28.6 % de las fotos con 77.8 % de aciertos: no llega al 90 % de D2. Falta evaluación con fotos reales de la zona |
 | R-12 | Coeficientes sin fuente | Media | 3 | **Mitigado con mecanismo, pendiente de datos.** `source` obligatorio y verificado por test; sin verificar ⇒ baja la confianza; ausente ⇒ el modelo se niega a calcular. **17 de 25 coeficientes siguen pendientes de revisión agronómica** (`docs/agronomy/sources.md` §4; la cifra «12 de 23» anterior estaba mal contada: eran 15). La Fase 4 añadió dos: el riego (provisional) y la protección del fungicida (ausente, apaga ese escenario) |
 | R-13 | Lógica agronómica filtrándose a React | Baja | 0 | Mitigado: `pnpm test:arch` lo verifica en CI |
 
@@ -545,11 +545,18 @@ inferencia de la cabeza en `domain/learning`, validación del contrato, sustituc
 del mock en el composition root.
 
 **DoD:**
-- [ ] **Test de paridad:** la cabeza en TypeScript y la cabeza en PyTorch producen
+- [x] **Test de paridad:** la cabeza en TypeScript y la cabeza en PyTorch producen
       los mismos logits (tolerancia 1e-4) sobre embeddings de fixture.
+      Diferencia máxima medida: 2.9 × 10⁻⁶ en 8 embeddings del backbone entregado.
 - [ ] RNF-01, RNF-02, RNF-03 y RNF-04 medidos en el dispositivo de referencia y
       registrados. Si alguno falla, reportar y proponer; no relajar.
-- [ ] Las métricas se reportan por clase, nunca solo accuracy global.
+      **Parcial.** RNF-02 (515.51 KiB) y RNF-03 (1.56 MiB) medidos y cumplidos:
+      son tamaños, no dependen del dispositivo. RNF-01 medido solo de forma
+      indicativa en escritorio (≤ 0.3 s con CPU ×6). RNF-04 sin medir. Ambos
+      esperan el dispositivo de referencia.
+- [x] Las métricas se reportan por clase, nunca solo accuracy global.
+      `ml/pipeline/reports/evaluation.md`: precisión, sensibilidad y F1 por
+      clase, matriz de confusión, laboratorio y campo por separado.
 
 ### Fase 6 — Aprendizaje federado
 
@@ -684,10 +691,64 @@ Cuando una fase las necesite, pídelas explícitamente y no las simules.
 
 > Mantenida por Claude Code. Actualizar al cerrar cada fase.
 
-**Fase actual:** 4 — Simulator, Advisor y TwinBoard. Implementada y verificada
-en la rama local `fase/4-simulator-advisor`; pendiente de tu confirmación para
-el merge a `main` y la etiqueta `fase-4`. La Fase 5 no empieza sin
-confirmación explícita.
+**Fase actual:** 5 — Inferencia real y pipeline ML. Implementada y verificada
+en la rama local `fase/5-inferencia-real`; pendiente de tu confirmación para el
+merge a `main` y la etiqueta `fase-5`. La Fase 4 se fusionó y publicó
+(`fase-4`) el 2026-09-28. La Fase 6 no empieza sin confirmación explícita.
+
+**Fase 5 — cierre (2026-09-28)**
+
+El mock ya no existe en producción. Una foto recorre: worker con el backbone
+ONNX → embedding → cabeza float32 en el dominio → umbral calibrado → snapshot.
+Funciona sin red una vez descargado el modelo, y así lo prueba el E2E.
+
+DoD verificado ejecutando comandos, tras borrar `dist/` y `*.tsbuildinfo`:
+
+- `pnpm lint && pnpm typecheck && pnpm test && pnpm test:arch && pnpm build` en verde.
+- **412 tests unitarios en 43 archivos**, **18 E2E con inferencia real**,
+  **13 tests de pytest** (nuevo job de CI `ml`).
+- Paridad TS ↔ PyTorch: 2.9 × 10⁻⁶ frente a la tolerancia de 1e-4.
+- RNF-02 515.51 KiB ✅ · RNF-03 1.56 MiB ✅ · RNF-01 indicativo en escritorio
+  (≤ 0.3 s con CPU ×6) · RNF-04 sin medir.
+- Métricas por clase en `ml/pipeline/reports/evaluation.md`.
+
+**El hallazgo principal: el modelo no está listo para el campo.**
+
+| Prueba | F1 tizones | Aceptadas | Aciertos entre aceptadas |
+|---|---|---|---|
+| Laboratorio | 0.993 | 92.9 % | 99.7 % |
+| Campo (PlantDoc) | 0.629 | 28.6 % | 77.8 % |
+
+Ningún umbral llega al 90 % de D2 con fotos de campo; en campo el modelo
+confunde sobre todo tizón temprano con tardío. Por §10 el umbral se calibró
+sobre la validación de campo: rechaza más («intenta otra foto») en lugar de
+dar diagnósticos equivocados. El contrato lo declara
+(`thresholdMetTarget: false`). Mejorarlo exige fotos reales de la zona (§19).
+
+**Decisiones cerradas (Fase 5):**
+
+- **D1** El modelo y el WASM se descargan en un paso explícito con progreso,
+  en su propia caché; la cámara no se abre sin modelo.
+- **D2** Umbral por precisión objetivo del 90 %, calibrado sobre la validación
+  **de campo**. Objetivo no alcanzado; declarado.
+- **D3** Entrenamiento en CPU con semilla; artefactos versionados.
+- **D4 → enmendada (opción A, aprobada):** INT8 solo en los pesos. La
+  cuantización estática completa se construyó, se midió (coseno 0.19, F1 de
+  tizones 0.044) y se descartó. ADR-0005 enmendado; detalle en
+  `ml/pipeline/reports/quantization.md`.
+- Hashes SHA-256 verificados al descargar **y** al cargar.
+- ONNX Runtime solo en el worker, con un solo hilo + SIMD (R-04).
+- `torch` se instala desde el índice CPU de PyTorch en todas las plataformas.
+
+**Desviaciones (Fase 5):**
+
+- La cuantización de D4 cambió de método (arriba).
+- Dispositivo de referencia: se cerró la fase con RNF-01 y RNF-04 pendientes,
+  tal como se acordó al abrirla.
+- En el mensaje de la decisión D4 se citó el backbone FP32 como de 3.6 MB; el
+  archivo medido pesa 6.08 MB. No cambia la conclusión.
+- Licencias: PlantDoc declara CC-BY-4.0; **PlantVillage no declara licencia**
+  en su repositorio. No publicar el modelo fuera del curso hasta aclararlo.
 
 **Fase 4 — cierre (2026-09-28)**
 
@@ -1017,6 +1078,13 @@ clave privada del hub no ha entrado nunca al repositorio.
 - [ ] **(Fase 2)** Probar en el Redmi Note 14: almacenamiento persistente
       concedido, guardar copia a Descargas y restaurarla. Tabla en
       `docs/nfr/measurements.md`.
+- [ ] **(Fase 5)** **Fotos reales de campo** de hojas de papa sanas, con tizón
+      temprano y con tizón tardío, de la zona. Es lo único que puede subir el
+      rendimiento en campo (hoy 77.8 % de aciertos con 28.6 % aceptadas).
+- [ ] **(Fase 5)** Verificar las licencias de PlantVillage (no declarada) y
+      PlantDoc (CC-BY-4.0 según GitHub).
+- [ ] **(Fase 5)** Medir RNF-01 y RNF-04 en el dispositivo de referencia con
+      el modelo real, y probar la descarga del modelo por wifi en el Redmi.
 - [ ] **(Fase 4)** Revisar el TwinBoard en el Redmi Note 14 **al aire libre**:
       legibilidad al sol, uso con una mano, «Regué hoy», las tres preguntas, y
       si alguien que no conoce la app entiende una recomendación. Es el único
