@@ -10,12 +10,20 @@ export type { ImageThumbnailer, ThumbnailResult } from './persistence/ImageThumb
 export { IMAGE_DIRECTORY, OpfsImageStore } from './persistence/OpfsImageStore.js';
 export { MockInferenceAdapter } from './inference/MockInferenceAdapter.js';
 export { LazyModelInference } from './inference/LazyModelInference.js';
+export type { ActiveHeadLookup } from './inference/LazyModelInference.js';
 export { MODEL_CACHE, ModelAssets } from './inference/ModelAssets.js';
 export type { DownloadProgress, LoadedModel, ModelFiles } from './inference/ModelAssets.js';
 export { OnnxEmbeddingAdapter } from './inference/OnnxEmbeddingAdapter.js';
 export { centreCropSource, toNormalizedTensor } from './inference/preprocess.js';
 export { BackupFileAdapter } from './system/BackupFileAdapter.js';
 export { CryptoIdGenerator } from './system/CryptoIdGenerator.js';
+export { CryptoRandom } from './system/CryptoRandom.js';
+export { WebCryptoSigner } from './federation/WebCryptoSigner.js';
+export {
+  DeviceCurrentModel,
+  DexieFederationSettings,
+  DexieTrainingExamples,
+} from './federation/DexieFederationStore.js';
 export { NavigatorStorageAdapter } from './system/NavigatorStorageAdapter.js';
 export { SystemClockAdapter } from './system/SystemClockAdapter.js';
 export { ClimateNormals, InvalidClimateNormalsError } from './weather/ClimateNormals.js';
