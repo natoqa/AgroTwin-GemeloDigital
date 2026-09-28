@@ -1,3 +1,4 @@
+/* global URL, console -- a Node script, run by hand; not browser or domain code. */
 // Regenerates the cross-language fixtures (run from the repository root, after
 // `pnpm build`):
 //
