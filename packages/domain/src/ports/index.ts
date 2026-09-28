@@ -1,6 +1,11 @@
 export type { CampaignRepositoryPort } from './CampaignRepositoryPort.js';
 export type { ClockPort } from './ClockPort.js';
 export type { EmbeddingPort } from './EmbeddingPort.js';
+export type {
+  CurrentModelPort,
+  FederationSettingsPort,
+  TrainingExampleRepositoryPort,
+} from './FederationPorts.js';
 export type { IdGeneratorPort } from './IdGeneratorPort.js';
 export type {
   EncodedImage,
@@ -13,6 +18,8 @@ export type { InferencePort } from './InferencePort.js';
 export type { IrrigationRepositoryPort } from './IrrigationRepositoryPort.js';
 export type { ObservationRepositoryPort } from './ObservationRepositoryPort.js';
 export type { PlotRepositoryPort } from './PlotRepositoryPort.js';
+export type { RandomPort } from './RandomPort.js';
+export type { EphemeralSigner, SignerPort } from './SignerPort.js';
 export type { SnapshotRepositoryPort } from './SnapshotRepositoryPort.js';
 export type { StoragePort, StorageStatus } from './StoragePort.js';
 export type { WeatherObservationRepositoryPort } from './WeatherObservationRepositoryPort.js';
