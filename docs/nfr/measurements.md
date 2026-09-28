@@ -285,6 +285,87 @@ del dominio).
 
 ---
 
+## Fase 5 — 2026-09-28
+
+### RNF-03: backbone ONNX < 12 MB
+
+- **Procedimiento:** tamaño en disco del artefacto entregado; el mismo número
+  está en `model-contract.json`. Un tamaño de archivo no depende del
+  dispositivo, así que esta medición **sí** valida el RNF.
+
+| Artefacto | Bytes |
+|---|---|
+| `backbone.int8.onnx` (pesos INT8, activaciones float32) | **1 637 991** (1.56 MiB) |
+| `head.json` | 68 840 |
+
+**Resultado: RNF-03 se cumple — 1.56 MiB frente a 12 MB.**
+
+### RNF-02: app shell < 8 MB, excluyendo runtime de inferencia y modelo
+
+| Métrica | Valor |
+|---|---|
+| Precache del service worker | **515.51 KiB** en 12 entradas |
+| `assets/index-*.js` (hilo principal) | 435.03 kB (134.73 kB con gzip) |
+| `assets/embedding.worker-*.js` (worker, precacheado) | 72.82 kB |
+| WASM de ONNX Runtime, **fuera** del precache (D1) | 14 239.89 kB (3 736.91 kB con gzip) |
+
+**Resultado: RNF-02 se cumple — 515.51 KiB.** El WASM y el modelo se descargan
+en el paso explícito de D1 y viven en su propia caché (`agrotwin-model-v1`).
+
+### RNF-01: latencia captura → resultado — **indicativa, no valida el RNF**
+
+- **Procedimiento:** `node packages/app/scripts/measure-latency.mts <factor>`
+  contra el build de producción, Chromium de Playwright con perfil Pixel 7 y
+  CPU limitada por el protocolo de DevTools. Cinco fotos seguidas; el modelo
+  ya descargado y arrancado.
+- **Ejecutado en:** máquina de desarrollo. **No** es el dispositivo de
+  referencia: la limitación de CPU por software no reproduce la memoria, la
+  caché ni el WASM de un teléfono de 2 GB.
+
+| Limitación de CPU | Primera foto | Mediana de las siguientes |
+|---|---|---|
+| ×1 | 108 ms | 97 ms |
+| ×4 | 185 ms | 126 ms |
+| ×6 | 297 ms | 256 ms |
+
+Holgura de un orden de magnitud frente a los 3 s, **en escritorio**. Queda
+pendiente la medición en el dispositivo de referencia.
+
+### RNF-04: memoria — **no medida**
+
+No hay una forma honesta de medir la memoria de una pestaña de Android desde
+Playwright en escritorio. Pendiente del dispositivo de referencia
+(`chrome://inspect` o `dumpsys meminfo`).
+
+### Paridad de la cabeza (DoD de la Fase 5)
+
+- **Procedimiento:** `packages/domain/src/learning/learning.test.ts` contra el
+  fixture que escribe el pipeline: 8 embeddings del backbone INT8 entregado
+  (4 de laboratorio, 4 de campo) y los logits de la cabeza de PyTorch.
+- **Resultado:** diferencia máxima **2.9 × 10⁻⁶** en los 8 casos, frente a la
+  tolerancia de 1 × 10⁻⁴ (el test falla si se supera).
+
+### Calidad del modelo (detalle en `ml/pipeline/reports/evaluation.md`)
+
+| Prueba | F1 de los tizones | Fotos aceptadas | Aciertos entre las aceptadas |
+|---|---|---|---|
+| Laboratorio (PlantVillage, 323) | 0.993 | 92.9 % | 99.7 % |
+| Campo (PlantDoc, 63) | 0.629 | **28.6 %** | **77.8 %** |
+
+**El objetivo de D2 (90 % de aciertos entre las aceptadas) no se alcanza con
+fotos de campo.** Ver el cierre de la Fase 5 en CLAUDE.md.
+
+### Suite
+
+- `pnpm lint && pnpm typecheck && pnpm test && pnpm test:arch && pnpm build`
+  en verde tras borrar `dist/` y `*.tsbuildinfo`.
+- **412 tests unitarios en 43 archivos**, **18 E2E** (todos con inferencia
+  real; el ciclo sin red incluido), **13 tests de pytest**.
+- Cobertura del dominio: sentencias 98.08%, ramas 90.59%, funciones 99.23%,
+  líneas 98.38%.
+
+---
+
 ## Pendiente: prueba en teléfono (acción humana)
 
 CLAUDE.md §19 la asigna al equipo y §16 prohíbe simularla.

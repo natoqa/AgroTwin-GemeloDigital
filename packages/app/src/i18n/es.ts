@@ -211,6 +211,18 @@ export const es = {
     myPlots: 'Mis parcelas',
     certainty: (confidence: number) => `Qué tan seguro estoy: ${confidenceLabel(confidence)}`,
   },
+  model: {
+    title: 'Reconocimiento de hojas',
+    missing:
+      'Para reconocer enfermedades en las fotos, el teléfono necesita descargar el reconocimiento de hojas una sola vez. Después funciona sin internet.',
+    size: 'Es una descarga grande, de más de 10 MB. Mejor hazlo con wifi.',
+    download: 'Descargar el reconocimiento de hojas',
+    downloading: (percent: number) => `Descargando… ${percent}%`,
+    ready: 'Listo: este teléfono reconoce hojas sin internet.',
+    failed:
+      'No se pudo descargar. Revisa que tengas internet e intenta de nuevo. Lo que ya tienes guardado no se pierde.',
+    captureBlocked: 'Antes de tomar fotos, descarga el reconocimiento de hojas.',
+  },
   storage: {
     persisted: 'Tus datos están guardados en este teléfono y no se borrarán solos.',
     notPersisted:

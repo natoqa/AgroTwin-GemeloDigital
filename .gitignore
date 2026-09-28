@@ -37,6 +37,8 @@ services/edge-hub/certs/
 *.pem
 *.key
 
-# Model artifacts are produced by ml/pipeline, not versioned here
+# Model artifacts are produced by ml/pipeline. Only the ones the app ships are
+# versioned (Phase 5, D3), so the app builds without retraining.
 *.onnx
+!packages/app/public/model/*.onnx
 dist-types/

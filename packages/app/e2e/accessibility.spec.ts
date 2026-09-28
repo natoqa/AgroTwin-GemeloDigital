@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { Server } from 'node:http';
-import { LEAF, locatedPlotWithCampaign } from './flows.js';
+import { LEAF, ensureModelOnCapture, locatedPlotWithCampaign } from './flows.js';
 import { startStaticServer, stopStaticServer } from './staticServer.js';
 
 /**
@@ -58,9 +58,11 @@ test('the main flows have no critical or serious axe violations', async ({ page 
 
   await page.getByTestId('go-capture').click();
   await expect(page.getByTestId('capture-screen')).toBeVisible();
-  await expectAccessible(page, 'the capture screen');
+  await expectAccessible(page, 'the capture screen, before the model is downloaded');
+  await ensureModelOnCapture(page);
+  await expectAccessible(page, 'the capture screen, ready');
   await page.getByTestId('photo-input').setInputFiles(LEAF);
-  await expect(page.getByTestId('latest-snapshot')).toBeVisible();
+  await expect(page.getByTestId('latest-snapshot')).toBeVisible({ timeout: 30_000 });
   await expectAccessible(page, 'the twin board with a photograph');
 
   await page.getByTestId('go-weather').click();

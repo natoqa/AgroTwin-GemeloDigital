@@ -1,5 +1,6 @@
 export type { CampaignRepositoryPort } from './CampaignRepositoryPort.js';
 export type { ClockPort } from './ClockPort.js';
+export type { EmbeddingPort } from './EmbeddingPort.js';
 export type { IdGeneratorPort } from './IdGeneratorPort.js';
 export type {
   EncodedImage,

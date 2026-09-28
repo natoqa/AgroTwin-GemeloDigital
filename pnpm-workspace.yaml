@@ -1,5 +1,9 @@
 packages:
   - 'packages/*'
+allowBuilds:
+  # onnxruntime-web depends on protobufjs; its install script is not needed
+  # to run inference, and nothing runs at install time that we did not choose.
+  protobufjs: false
 minimumReleaseAgeExclude:
   - '@typescript-eslint/eslint-plugin@8.70.1'
   - '@typescript-eslint/parser@8.70.1'

@@ -1,0 +1,2 @@
+# Training checkpoints and intermediate ONNX files: reproducible, never versioned.
+work/

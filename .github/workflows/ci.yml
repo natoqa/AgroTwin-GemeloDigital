@@ -63,6 +63,35 @@ jobs:
       - name: Build
         run: pnpm build
 
+  ml:
+    name: ML pipeline (ruff · pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml/pipeline
+
+    # Fast checks only. The training run itself needs the datasets and an
+    # hour of CPU; it is run by hand and its artifacts are versioned (Phase 5,
+    # D3). The last test checks that the versioned artifacts still match
+    # their contract, byte for byte.
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --frozen
+
+      - name: Lint and format
+        run: uv run ruff check src tests && uv run ruff format --check src tests
+
+      - name: Test
+        run: uv run pytest -q
+
   e2e:
     name: end-to-end (Playwright)
     runs-on: ubuntu-latest

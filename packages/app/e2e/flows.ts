@@ -60,12 +60,32 @@ export async function createPlotWithCampaign(
   await expect(page.getByTestId('twin-screen')).toBeVisible();
 }
 
+/**
+ * On the capture screen, downloads the leaf-recognition model if this browser
+ * does not have it yet (Phase 5, D1), and waits until the camera is offered.
+ */
+export async function ensureModelOnCapture(page: Page): Promise<void> {
+  const download = page.getByTestId('download-model');
+  const input = page.getByTestId('photo-input');
+  await expect(download.or(input)).toBeAttached();
+  if (await download.isVisible()) await download.click();
+  await expect(input).toBeAttached({ timeout: 60_000 });
+}
+
+/** Downloads the model from the plot list, where the onboarding offers it. */
+export async function downloadModel(page: Page): Promise<void> {
+  await page.getByTestId('download-model').click();
+  await expect(page.getByTestId('model-ready')).toBeVisible({ timeout: 60_000 });
+}
+
 /** Photographs the plot and returns the label the twin board shows. */
 export async function photograph(page: Page): Promise<string> {
   await page.getByTestId('go-capture').click();
+  await ensureModelOnCapture(page);
   await page.getByTestId('photo-input').setInputFiles(LEAF);
 
-  await expect(page.getByTestId('latest-snapshot')).toBeVisible();
+  // The first diagnosis also starts ONNX Runtime in its worker.
+  await expect(page.getByTestId('latest-snapshot')).toBeVisible({ timeout: 30_000 });
   return ((await page.getByTestId('diagnosis-label').textContent()) ?? '').trim();
 }
 

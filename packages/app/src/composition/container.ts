@@ -1,4 +1,5 @@
 import climateNormalsDocument from '../../../../data/climate/la-libertad.SYNTHETIC.json' with { type: 'json' };
+import ortWasmUrl from 'onnxruntime-web/ort-wasm-simd-threaded.wasm?url';
 import {
   AgroTwinDb,
   CachedNetworkWeatherAdapter,
@@ -14,7 +15,8 @@ import {
   DexieObservationRepository,
   DexiePlotRepository,
   DexieSnapshotRepository,
-  MockInferenceAdapter,
+  LazyModelInference,
+  ModelAssets,
   NavigatorStorageAdapter,
   OpfsImageStore,
   SystemClockAdapter,
@@ -53,9 +55,9 @@ import type {
 /**
  * The composition root: the one place where the domain and its adapters meet.
  *
- * Everything above this file talks to use cases and ports. That is what keeps
- * Phase 5's swap of MockInferenceAdapter for the real ONNX adapter a change to
- * this file and nothing else.
+ * Everything above this file talks to use cases and ports. That is what made
+ * Phase 5's swap of the mock classifier for the real one — ONNX backbone in a
+ * worker, head in the domain — a change to this file and nothing else.
  *
  * Building it is asynchronous now, because OPFS hands out its directory handle
  * through a promise. The app shows a short "preparing" state rather than
@@ -72,6 +74,10 @@ export interface Container {
   readonly weatherObservations: WeatherObservationRepositoryPort;
   readonly irrigations: IrrigationRepositoryPort;
   readonly backupFile: BackupFileAdapter;
+  /** The leaf-recognition model: download it, and ask whether it is here. */
+  readonly model: ModelAssets;
+  /** Starts the classifier ahead of the first photograph. */
+  readonly warmUpModel: () => Promise<unknown>;
   readonly createPlot: ReturnType<typeof createPlotUseCase>;
   readonly updatePlotDetails: ReturnType<typeof updatePlotDetailsUseCase>;
   readonly startCampaign: ReturnType<typeof startCampaignUseCase>;
@@ -118,8 +124,16 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
     weatherObservations,
     POTATO_COEFFICIENTS,
   );
-  // Phase 5 replaces this line with the ONNX adapter in a worker.
-  const inference = new MockInferenceAdapter();
+  // Phase 5: the real classifier — INT8 backbone in a worker, float32 head in
+  // the domain — started on first use from what the farmer downloaded.
+  const model = new ModelAssets({
+    contractUrl: `${import.meta.env.BASE_URL}model/model-contract.json`,
+    wasmUrl: ortWasmUrl,
+  });
+  const inference = new LazyModelInference(
+    model,
+    () => new Worker(new URL('./embedding.worker.ts', import.meta.url), { type: 'module' }),
+  );
 
   return {
     plots,
@@ -132,6 +146,8 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
     weatherObservations,
     irrigations,
     backupFile: new BackupFileAdapter(),
+    model,
+    warmUpModel: () => inference.ready(),
     createPlot: createPlotUseCase({ plots, clock, ids }),
     updatePlotDetails: updatePlotDetailsUseCase({ plots }),
     startCampaign: startCampaignUseCase({ plots, campaigns, clock, ids }),
