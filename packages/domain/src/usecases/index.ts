@@ -40,6 +40,19 @@ export type {
   RecordWeatherObservationDependencies,
   RecordWeatherObservationInput,
 } from './RecordWeatherObservation.js';
+export {
+  FUNGICIDE_HORIZON_DAYS,
+  HARVEST_SEARCH_LIMIT_DAYS,
+  MAX_DAYS_WITHOUT_WATER,
+  simulateScenarioUseCase,
+} from './SimulateScenario.js';
+export type {
+  Scenario,
+  ScenarioAnswer,
+  ScenarioOutcome,
+  ScenarioPrecondition,
+  SimulateScenarioDependencies,
+} from './SimulateScenario.js';
 export { startCampaignUseCase } from './StartCampaign.js';
 export type { StartCampaignDependencies, StartCampaignInput } from './StartCampaign.js';
 export { updatePlotDetailsUseCase } from './UpdatePlotDetails.js';

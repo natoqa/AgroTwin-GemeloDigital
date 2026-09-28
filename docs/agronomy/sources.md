@@ -204,6 +204,22 @@ Nueve entradas. Ninguna tiene fuente verificada y todas reducen la confianza.
 | `gddToBulking` | Tiempo térmico al inicio del llenado | ídem |
 | `gddToMaturity` | Tiempo térmico a madurez | ídem |
 | `leafWetnessHoursWhenDewObserved` | Horas de humedad foliar a suponer cuando el agricultor reporta hoja mojada al amanecer | **El riesgo de tizón no se calcula nunca.** Ver ADR-0009 |
+| `fungicideProtectionDays` | Cuántos días protege una aplicación de fungicida (Fase 4) | **El escenario «¿y si aplico fungicida hoy?» se niega a responder.** Depende del producto (de contacto o sistémico), la dosis y la lluvia que lo lava. Ver ADR-0010 |
+
+**De `gddToMaturity` a fecha de cosecha (Fase 4).** Mientras no haya
+umbral de madurez, el Simulador estima la cosecha como siembra + la suma de las
+cuatro duraciones de etapa de FAO-56 (130 días, provisionales). Esa estimación
+ignora el clima del año y lleva la confianza de cuatro coeficientes
+provisionales (0.6⁴ ≈ 0.13). La pantalla la presenta como «fecha aproximada».
+Con `gddToMaturity` y su fuente, pasa sola al reloj térmico.
+
+**Simplificación del escenario de fungicida (Fase 4).** Wallin (1962) no modela
+aplicaciones. Para responder la pregunta de §8.3 se adopta una regla declarada:
+el día de la aplicación la severidad acumulada vuelve a cero y, durante
+`fungicideProtectionDays` días, no se suma nada; después, la cuenta sigue desde
+cero. BLITECAST decide las aplicaciones siguientes con otra regla (Krause,
+Massie y Hyre, 1975) que aquí **no** se implementa. Hoy el escenario está doblemente
+apagado: falta la humedad foliar y falta la duración de la protección.
 
 **Qué significa esto en la práctica.** Hoy el gemelo acumula grados-día
 correctamente y **dice que no sabe en qué etapa está el cultivo**. Es el

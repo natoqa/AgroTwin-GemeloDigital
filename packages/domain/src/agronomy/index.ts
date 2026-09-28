@@ -31,6 +31,7 @@ export {
   accumulateBlightRisk,
   dailySeverityValue,
   lateBlightRiskFor,
+  protectedBlightRisk,
 } from './LateBlightRisk.js';
 export type { BlightRisk, SeverityValue, WetPeriod } from './LateBlightRisk.js';
 export {
