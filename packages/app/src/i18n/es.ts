@@ -223,6 +223,46 @@ export const es = {
       'No se pudo descargar. Revisa que tengas internet e intenta de nuevo. Lo que ya tienes guardado no se pierde.',
     captureBlocked: 'Antes de tomar fotos, descarga el reconocimiento de hojas.',
   },
+  federation: {
+    title: 'Aprendizaje compartido',
+    open: 'Aprendizaje compartido',
+    intro:
+      'Tu teléfono puede aprender de las fotos que tú confirmas, y compartir lo aprendido con otros agricultores para que todos reconozcan mejor las hojas.',
+    privacy:
+      'Nunca salen de tu teléfono tus fotos, tu ubicación ni tus parcelas. Solo sale un archivo con números del modelo, sin tu nombre.',
+    consentLegend: '¿Qué quieres hacer?',
+    consent: {
+      off: 'No compartir nada',
+      receive_only: 'Solo recibir mejoras',
+      share_and_receive: 'Compartir y recibir mejoras',
+    } as Record<string, string>,
+    status: (training: number, holdout: number, minimum: number) =>
+      `Fotos confirmadas: ${training + holdout} (${training} para aprender, ${holdout} para comprobar). Hacen falta al menos ${minimum} para aprender.`,
+    modelVersion: (version: string) => `Modelo en uso: ${version}`,
+    prepare: 'Preparar mi aporte',
+    prepared: 'Listo: el archivo de tu aporte está en tus descargas. Llévalo al centro de acopio.',
+    prepareBlocked: 'Para preparar un aporte elige «Compartir y recibir mejoras».',
+    prepareFailed: (reason: string) => `No se pudo preparar el aporte: ${reason}`,
+    importLabel: 'Cargar una mejora (archivo .agrotwin-model)',
+    accepted: (before: number, after: number) =>
+      `Mejora aceptada. En tus fotos de comprobación acertaba ${Math.round(before * 100)}% y ahora ${Math.round(after * 100)}%.`,
+    rejected: {
+      consent_off: 'No se cargó: elegiste no compartir nada.',
+      bad_signature: 'No se cargó: el archivo fue alterado o no está firmado.',
+      untrusted_hub: 'No se cargó: viene de un centro distinto al de siempre.',
+      other_backbone: 'No se cargó: es para otra versión del reconocimiento de hojas.',
+      other_base: 'No se cargó: se preparó sobre otra versión del modelo.',
+      no_holdout:
+        'No se cargó: primero confirma algunas fotos, para que el teléfono pueda comprobar que la mejora no empeora.',
+      holdout_dropped: 'No se cargó: en tus fotos de comprobación acertaba menos que el modelo actual.',
+    } as Record<string, string>,
+    importFailed: 'Ese archivo no es una mejora que esta aplicación pueda leer.',
+    confirmQuestion: '¿Acerté? Tu respuesta enseña al teléfono.',
+    confirmYes: 'Sí, es correcto',
+    confirmAs: (label: string) => `No: es ${label.toLowerCase()}`,
+    confirmed: 'Gracias. Anotado para aprender.',
+    confirmFailed: 'No se pudo anotar: la foto original ya no está guardada.',
+  },
   storage: {
     persisted: 'Tus datos están guardados en este teléfono y no se borrarán solos.',
     notPersisted:

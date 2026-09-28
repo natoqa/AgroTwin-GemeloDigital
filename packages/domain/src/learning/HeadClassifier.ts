@@ -22,6 +22,8 @@ export class HeadClassifier implements InferencePort {
     private readonly embedder: EmbeddingPort,
     private readonly head: LinearHead,
     private readonly contract: ModelContract,
+    /** The head's version; the contract's unless federated learning replaced it. */
+    private readonly version: string = contract.version,
   ) {}
 
   async diagnose(image: ArrayBuffer): Promise<Diagnosis> {
@@ -41,7 +43,7 @@ export class HeadClassifier implements InferencePort {
     return {
       class: confidence < this.contract.rejectionThreshold ? 'rejected' : label,
       confidence,
-      modelVersion: this.contract.version,
+      modelVersion: this.version,
     };
   }
 }

@@ -27,6 +27,26 @@ export class BackupFileAdapter {
     }, 0);
   }
 
+  /** The same, for binary files: federated-learning deltas and models. */
+  downloadBytes(bytes: Uint8Array, filename: string): void {
+    const blob = new Blob([bytes.slice().buffer], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.rel = 'noopener';
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 0);
+  }
+
+  async readBytes(file: Blob): Promise<Uint8Array> {
+    return new Uint8Array(await file.arrayBuffer());
+  }
+
   /** Reads a file the farmer picked. */
   async read(file: Blob): Promise<string> {
     return file.text();

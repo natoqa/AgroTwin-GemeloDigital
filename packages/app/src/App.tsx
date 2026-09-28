@@ -7,6 +7,7 @@ import { PlotScreen } from './features/plots/PlotScreen';
 import { PlotsScreen } from './features/plots/PlotsScreen';
 import { TwinScreen } from './features/twin/TwinScreen';
 import { WeatherScreen } from './features/weather/WeatherScreen';
+import { FederationScreen } from './features/federation/FederationScreen';
 
 type View =
   | { name: 'plots' }
@@ -15,7 +16,8 @@ type View =
   | { name: 'twin'; plot: Plot; campaign: Campaign }
   | { name: 'capture'; plot: Plot; campaign: Campaign }
   | { name: 'weather'; plot: Plot; campaign: Campaign }
-  | { name: 'backup' };
+  | { name: 'backup' }
+  | { name: 'federation' };
 
 /**
  * Navigation, and nothing else.
@@ -39,6 +41,7 @@ export function App() {
           key={revision}
           onOpenPlot={(plot) => setView({ name: 'plot', plot })}
           onOpenBackup={() => setView({ name: 'backup' })}
+          onOpenFederation={() => setView({ name: 'federation' })}
         />
       );
 
@@ -90,6 +93,9 @@ export function App() {
           onBack={() => setView({ name: 'twin', plot: view.plot, campaign: view.campaign })}
         />
       );
+
+    case 'federation':
+      return <FederationScreen onBack={() => setView({ name: 'plots' })} />;
 
     case 'backup':
       return (

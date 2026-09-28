@@ -63,3 +63,12 @@ export type {
   UpdatePlotDetailsDependencies,
   UpdatePlotDetailsInput,
 } from './UpdatePlotDetails.js';
+export type { FederationDependencies } from './federationDependencies.js';
+export { getFederationStatusUseCase } from './GetFederationStatus.js';
+export type { FederationStatus } from './GetFederationStatus.js';
+export { importAggregatedModelUseCase } from './ImportAggregatedModel.js';
+export type { ImportVerdict } from './ImportAggregatedModel.js';
+export { labelObservationUseCase } from './LabelObservation.js';
+export { prepareContributionUseCase } from './PrepareContribution.js';
+export type { Contribution } from './PrepareContribution.js';
+export { setFederationConsentUseCase } from './SetFederationConsent.js';

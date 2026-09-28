@@ -96,6 +96,32 @@ export interface ImageRecord {
   storedAt: number;
 }
 
+/** A farmer-labelled photograph, as the head trains on it. */
+export interface TrainingExampleRecord {
+  observationId: string;
+  label: string;
+  embedding: Float32Array;
+  backboneVersion: string;
+  labeledAt: number;
+}
+
+/** One setting of this device, by key. */
+export interface SettingRecord {
+  key: string;
+  value: string;
+}
+
+/** A federated head the phone accepted, one per backbone. */
+export interface AdoptedHeadRecord {
+  backboneVersion: string;
+  headVersion: string;
+  classes: string[];
+  embeddingDimension: number;
+  weights: Float32Array;
+  bias: Float32Array;
+  adoptedAt: number;
+}
+
 /** One day the farmer watered, within one campaign. */
 export interface IrrigationRecord {
   /** `campaignId|date`: one irrigation per campaign per day, by construction. */

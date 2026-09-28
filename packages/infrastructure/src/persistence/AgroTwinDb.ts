@@ -2,11 +2,14 @@ import { Dexie } from 'dexie';
 import type { EntityTable } from 'dexie';
 import type {
   CampaignRecord,
+  AdoptedHeadRecord,
   ImageRecord,
   IrrigationRecord,
   ObservationRecord,
   PlotRecord,
   SnapshotRecord,
+  SettingRecord,
+  TrainingExampleRecord,
   WeatherObservationRecord,
 } from './records.js';
 
@@ -33,6 +36,9 @@ export class AgroTwinDb extends Dexie {
   declare images: EntityTable<ImageRecord, 'id'>;
   declare weatherObservations: EntityTable<WeatherObservationRecord, 'id'>;
   declare irrigations: EntityTable<IrrigationRecord, 'id'>;
+  declare trainingExamples: EntityTable<TrainingExampleRecord, 'observationId'>;
+  declare settings: EntityTable<SettingRecord, 'key'>;
+  declare adoptedHeads: EntityTable<AdoptedHeadRecord, 'backboneVersion'>;
 
   constructor(name = 'agrotwin') {
     super(name);
@@ -80,6 +86,20 @@ export class AgroTwinDb extends Dexie {
       weatherObservations: 'id, plotId, date, [plotId+date]',
       // Keyed by campaign and day: watering twice in one day is one event.
       irrigations: 'id, campaignId, [campaignId+date]',
+    });
+
+    // Version 5 (Phase 6): federated learning. New tables only.
+    this.version(5).stores({
+      plots: 'id, createdAt',
+      campaigns: 'id, plotId, status, [plotId+status]',
+      observations: 'id, campaignId, imageRef, at, [campaignId+at]',
+      snapshots: 'id, plotId, campaignId, at, [plotId+at], [campaignId+at]',
+      images: 'id, kind, storedAt, [kind+storedAt]',
+      weatherObservations: 'id, plotId, date, [plotId+date]',
+      irrigations: 'id, campaignId, [campaignId+date]',
+      trainingExamples: 'observationId, backboneVersion',
+      settings: 'key',
+      adoptedHeads: 'backboneVersion',
     });
   }
 }

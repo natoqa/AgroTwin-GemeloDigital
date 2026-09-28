@@ -4,7 +4,9 @@ version = "0.0.0"
 description = "AgroTwin LAN edge hub. Phase 0 scope: R-02 spike only."
 requires-python = ">=3.11,<3.12"
 dependencies = [
+    "cryptography>=50.0.1",
     "fastapi",
+    "numpy>=2.4.6",
     "uvicorn[standard]",
 ]
 
@@ -23,3 +25,8 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# The hub is not an installed package (tool.uv package = false).
+pythonpath = ["."]

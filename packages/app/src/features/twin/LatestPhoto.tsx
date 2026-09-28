@@ -2,6 +2,7 @@ import type { TimelineEntry } from '@agrotwin/domain';
 import { DIAGNOSIS_HELP, DIAGNOSIS_LABEL, es } from '../../i18n/es';
 import { Card } from '../../ui/Card';
 import type { Tone } from '../../ui/Card';
+import { ConfirmDiagnosis } from '../federation/ConfirmDiagnosis';
 
 const TONE = {
   healthy: 'good',
@@ -49,6 +50,14 @@ export function LatestPhoto({ entry }: { entry: TimelineEntry | undefined }) {
         {es.twin.photoProvenance}
       </p>
       {entry.observation?.note ? <p className="text-base">{es.twin.yourNote(entry.observation.note)}</p> : null}
+      {/* Only while the original photo is kept: the embedding comes from it. */}
+      {entry.observation && entry.hasOriginalImage ? (
+        <ConfirmDiagnosis
+          key={entry.observation.id}
+          observationId={entry.observation.id}
+          predicted={snapshot.diagnosis.class}
+        />
+      ) : null}
     </Card>
   );
 }

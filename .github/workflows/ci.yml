@@ -64,7 +64,7 @@ jobs:
         run: pnpm build
 
   ml:
-    name: ML pipeline (ruff · pytest)
+    name: Python (ML pipeline · edge hub)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -92,6 +92,15 @@ jobs:
       - name: Test
         run: uv run pytest -q
 
+      # The edge hub: FedAvg and signature checks (Phase 6).
+      - name: Hub - install
+        working-directory: services/edge-hub
+        run: uv sync --frozen
+
+      - name: Hub - lint and test
+        working-directory: services/edge-hub
+        run: uv run ruff check edge_hub tests && uv run pytest -q
+
   e2e:
     name: end-to-end (Playwright)
     runs-on: ubuntu-latest
@@ -112,6 +121,14 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Only Chromium: the supported matrix is Chrome on Android.
+      # The federated-learning spec runs the real hub between browsers.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.2.0
+
+      - name: Install the edge hub
+        working-directory: services/edge-hub
+        run: uv sync --frozen
+
       - name: Install Chromium for Playwright
         run: pnpm --filter @agrotwin/app exec playwright install --with-deps chromium
 

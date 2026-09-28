@@ -16,9 +16,11 @@ import { StorageNotice } from '../onboarding/StorageNotice';
 export function PlotsScreen({
   onOpenPlot,
   onOpenBackup,
+  onOpenFederation,
 }: {
   onOpenPlot: (plot: Plot) => void;
   onOpenBackup: () => void;
+  onOpenFederation: () => void;
 }) {
   const { plots, createPlot } = useContainer();
   const [stored, setStored] = useState<readonly Plot[]>([]);
@@ -89,6 +91,12 @@ export function PlotsScreen({
           {error}
         </Banner>
       ) : null}
+
+      <Section title={es.federation.title} icon="leaf">
+        <Button icon="leaf" wide onClick={onOpenFederation} data-testid="go-federation">
+          {es.federation.open}
+        </Button>
+      </Section>
 
       <Section title={es.plots.backupTitle} icon="save">
         <Button icon="save" wide onClick={onOpenBackup} data-testid="go-backup">
