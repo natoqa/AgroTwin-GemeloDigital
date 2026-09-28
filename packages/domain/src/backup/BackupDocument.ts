@@ -7,12 +7,15 @@ import { LocalDate } from '../model/LocalDate.js';
 import { createObservation } from '../model/Observation.js';
 import type { Observation } from '../model/Observation.js';
 import { createPlot } from '../model/Plot.js';
+import type { Irrigation } from '../model/Irrigation.js';
 import type { Plot } from '../model/Plot.js';
 import { CROP } from '../model/Campaign.js';
 import type { Campaign } from '../model/Campaign.js';
 import { isProvenanceSource } from '../model/Provenance.js';
 import type { ProvenanceEntry } from '../model/Provenance.js';
 import type { TwinSnapshot } from '../model/TwinSnapshot.js';
+import { isRainfallAnswer } from '../model/WeatherObservation.js';
+import type { RainfallAnswer, WeatherObservation } from '../model/WeatherObservation.js';
 import type { EncodedImage } from '../ports/ImageStorePort.js';
 
 /**
@@ -28,7 +31,16 @@ import type { EncodedImage } from '../ports/ImageStorePort.js';
  * cable, and the originals are the one part the twin can reason without.
  */
 export const BACKUP_FORMAT = 'agrotwin-backup';
-export const BACKUP_FORMAT_VERSION = 1;
+export const BACKUP_FORMAT_VERSION = 2;
+
+/**
+ * Every version this app can still restore.
+ *
+ * Version 1 (Phase 2) predates the farmer's weather answers and irrigations. A
+ * version 1 file is still a complete record of what that app knew, so it
+ * restores as-is, with neither — which is exactly what it held.
+ */
+export const READABLE_BACKUP_FORMAT_VERSIONS: readonly number[] = [1, 2];
 
 export interface BackupDocument {
   readonly format: typeof BACKUP_FORMAT;
@@ -39,6 +51,10 @@ export interface BackupDocument {
   readonly observations: readonly ObservationDto[];
   readonly snapshots: readonly SnapshotDto[];
   readonly images: readonly EncodedImageDto[];
+  /** Since version 2. What the farmer said the weather did, per plot and day. */
+  readonly weatherObservations: readonly WeatherObservationDto[];
+  /** Since version 2. The days the farmer watered, per campaign. */
+  readonly irrigations: readonly IrrigationDto[];
 }
 
 export interface PlotLocationDto {
@@ -94,6 +110,22 @@ export interface SnapshotDto {
   readonly observationId?: string;
   readonly confidence: number;
   readonly provenance: readonly ProvenanceEntry[];
+}
+
+export interface WeatherObservationDto {
+  readonly plotId: string;
+  readonly date: string;
+  /** Checked while parsing, so a mapped DTO never needs checking again. */
+  readonly rainfall: RainfallAnswer;
+  readonly coldNight: boolean;
+  readonly recordedAt: number;
+}
+
+export interface IrrigationDto {
+  readonly campaignId: string;
+  readonly plotId: string;
+  readonly date: string;
+  readonly recordedAt: number;
 }
 
 export interface EncodedImageDto {
@@ -171,6 +203,23 @@ export const toEncodedImageDto = (image: EncodedImage): EncodedImageDto => ({
   storedAt: image.storedAt,
 });
 
+export const toWeatherObservationDto = (
+  observation: WeatherObservation,
+): WeatherObservationDto => ({
+  plotId: observation.plotId,
+  date: observation.date.toString(),
+  rainfall: observation.rainfall,
+  coldNight: observation.coldNight,
+  recordedAt: observation.recordedAt,
+});
+
+export const toIrrigationDto = (irrigation: Irrigation): IrrigationDto => ({
+  campaignId: irrigation.campaignId,
+  plotId: irrigation.plotId,
+  date: irrigation.date.toString(),
+  recordedAt: irrigation.recordedAt,
+});
+
 /** The file as text. Pretty-printed so a human can inspect what they hold. */
 export const serializeBackup = (backup: BackupDocument): string =>
   JSON.stringify(backup, undefined, 2);
@@ -237,6 +286,21 @@ export const toEncodedImage = (dto: EncodedImageDto): EncodedImage => ({
   storedAt: epochMillis(dto.storedAt),
 });
 
+export const toWeatherObservation = (dto: WeatherObservationDto): WeatherObservation => ({
+  plotId: plotId(dto.plotId),
+  date: LocalDate.parse(dto.date),
+  rainfall: dto.rainfall,
+  coldNight: dto.coldNight,
+  recordedAt: epochMillis(dto.recordedAt),
+});
+
+export const toIrrigation = (dto: IrrigationDto): Irrigation => ({
+  campaignId: campaignId(dto.campaignId),
+  plotId: plotId(dto.plotId),
+  date: LocalDate.parse(dto.date),
+  recordedAt: epochMillis(dto.recordedAt),
+});
+
 // --- Parsing ------------------------------------------------------------
 
 /**
@@ -259,9 +323,9 @@ export function parseBackup(text: string): BackupDocument {
     throw new BackupFormatError(`it is not an ${BACKUP_FORMAT} file`);
   }
   const formatVersion = asNumber(root['formatVersion'], 'formatVersion');
-  if (formatVersion !== BACKUP_FORMAT_VERSION) {
+  if (!READABLE_BACKUP_FORMAT_VERSIONS.includes(formatVersion)) {
     throw new BackupFormatError(
-      `it uses format version ${formatVersion}, and this app reads version ${BACKUP_FORMAT_VERSION}`,
+      `it uses format version ${formatVersion}, and this app reads versions ${READABLE_BACKUP_FORMAT_VERSIONS.join(', ')}`,
     );
   }
 
@@ -274,6 +338,15 @@ export function parseBackup(text: string): BackupDocument {
     observations: asArray(root['observations'], 'observations').map(parseObservation),
     snapshots: asArray(root['snapshots'], 'snapshots').map(parseSnapshot),
     images: asArray(root['images'], 'images').map(parseEncodedImage),
+    // Absent from version 1 files, which is not the same as a malformed list.
+    weatherObservations:
+      formatVersion === 1
+        ? []
+        : asArray(root['weatherObservations'], 'weatherObservations').map(
+            parseWeatherObservation,
+          ),
+    irrigations:
+      formatVersion === 1 ? [] : asArray(root['irrigations'], 'irrigations').map(parseIrrigation),
   };
 }
 
@@ -401,6 +474,33 @@ function parseEncodedImage(value: unknown, index: number): EncodedImageDto {
   };
 }
 
+function parseWeatherObservation(value: unknown, index: number): WeatherObservationDto {
+  const path = `weatherObservations[${index}]`;
+  const record = asRecord(value, path);
+  const rainfall = asString(record['rainfall'], `${path}.rainfall`);
+  if (!isRainfallAnswer(rainfall)) {
+    throw new BackupFormatError(`${path}.rainfall names an answer this version does not know`);
+  }
+  return {
+    plotId: asString(record['plotId'], `${path}.plotId`),
+    date: asString(record['date'], `${path}.date`),
+    rainfall,
+    coldNight: asBoolean(record['coldNight'], `${path}.coldNight`),
+    recordedAt: asNumber(record['recordedAt'], `${path}.recordedAt`),
+  };
+}
+
+function parseIrrigation(value: unknown, index: number): IrrigationDto {
+  const path = `irrigations[${index}]`;
+  const record = asRecord(value, path);
+  return {
+    campaignId: asString(record['campaignId'], `${path}.campaignId`),
+    plotId: asString(record['plotId'], `${path}.plotId`),
+    date: asString(record['date'], `${path}.date`),
+    recordedAt: asNumber(record['recordedAt'], `${path}.recordedAt`),
+  };
+}
+
 function asRecord(value: unknown, path: string): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new BackupFormatError(`${path} is not an object`);
@@ -425,6 +525,13 @@ function asString(value: unknown, path: string): string {
 function asNumber(value: unknown, path: string): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new BackupFormatError(`${path} is not a number`);
+  }
+  return value;
+}
+
+function asBoolean(value: unknown, path: string): boolean {
+  if (typeof value !== 'boolean') {
+    throw new BackupFormatError(`${path} is not true or false`);
   }
   return value;
 }

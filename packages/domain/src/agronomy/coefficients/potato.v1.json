@@ -132,6 +132,18 @@
       "source": "TODO: verificar fuente",
       "note": "Provisional. Multiplies the normals' rainfall when the farmer answers 'a lot'. Same caveat as rainfallFactorLittle."
     },
+    "irrigationRefillFraction": {
+      "value": 1.0,
+      "unit": "fraction",
+      "source": "TODO: verificar fuente",
+      "note": "Provisional modelling decision (Phase 4). The farmer reports that they watered, not how much, so one reported irrigation makes up this share of the root zone depletion of the day before. 1 means it brings the soil back to field capacity. Whether furrow irrigation in the sierra actually achieves that is unverified."
+    },
+    "fungicideProtectionDays": {
+      "value": null,
+      "unit": "day",
+      "source": "TODO: verificar fuente",
+      "note": "Unknown. How many days one fungicide application protects the crop, used only by the what-if scenario 'what if I spray today?'. It depends on the product (contact or systemic), the dose and the rain that washes it off, and none of that is known here. While it is null the scenario refuses to answer."
+    },
     "coldNightTemperatureDrop": {
       "value": 3.0,
       "unit": "degreeCelsius",

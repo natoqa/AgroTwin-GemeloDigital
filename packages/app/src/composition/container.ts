@@ -10,6 +10,7 @@ import {
   CanvasImageThumbnailer,
   CryptoIdGenerator,
   DexieCampaignRepository,
+  DexieIrrigationRepository,
   DexieObservationRepository,
   DexiePlotRepository,
   DexieSnapshotRepository,
@@ -20,6 +21,7 @@ import {
 } from '@agrotwin/infrastructure';
 import {
   POTATO_COEFFICIENTS,
+  adviseCampaignUseCase,
   applyImageRetentionUseCase,
   computeCampaignStateUseCase,
   closeCampaignUseCase,
@@ -29,14 +31,17 @@ import {
   exportBackupUseCase,
   getCampaignTimelineUseCase,
   importBackupUseCase,
+  recordIrrigationUseCase,
   recordObservationUseCase,
   recordWeatherObservationUseCase,
+  simulateScenarioUseCase,
   startCampaignUseCase,
   updatePlotDetailsUseCase,
 } from '@agrotwin/domain';
 import type {
   CampaignRepositoryPort,
   ImageStorePort,
+  IrrigationRepositoryPort,
   ObservationRepositoryPort,
   PlotRepositoryPort,
   SnapshotRepositoryPort,
@@ -65,6 +70,7 @@ export interface Container {
   readonly storage: StoragePort;
   readonly weather: WeatherPort;
   readonly weatherObservations: WeatherObservationRepositoryPort;
+  readonly irrigations: IrrigationRepositoryPort;
   readonly backupFile: BackupFileAdapter;
   readonly createPlot: ReturnType<typeof createPlotUseCase>;
   readonly updatePlotDetails: ReturnType<typeof updatePlotDetailsUseCase>;
@@ -74,6 +80,9 @@ export interface Container {
   readonly getCampaignTimeline: ReturnType<typeof getCampaignTimelineUseCase>;
   readonly computeCampaignState: ReturnType<typeof computeCampaignStateUseCase>;
   readonly recordWeatherObservation: ReturnType<typeof recordWeatherObservationUseCase>;
+  readonly recordIrrigation: ReturnType<typeof recordIrrigationUseCase>;
+  readonly adviseCampaign: ReturnType<typeof adviseCampaignUseCase>;
+  readonly simulateScenario: ReturnType<typeof simulateScenarioUseCase>;
   readonly applyImageRetention: ReturnType<typeof applyImageRetentionUseCase>;
   readonly ensurePersistentStorage: ReturnType<typeof ensurePersistentStorageUseCase>;
   readonly exportBackup: ReturnType<typeof exportBackupUseCase>;
@@ -93,6 +102,7 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
   const images = await OpfsImageStore.open(db, ids, clock, new CanvasImageThumbnailer());
   const storage = new NavigatorStorageAdapter();
   const weatherObservations = new DexieWeatherObservationRepository(db);
+  const irrigations = new DexieIrrigationRepository(db);
 
   /*
    * The three weather sources of CLAUDE.md §9, stacked cheapest-to-best:
@@ -120,6 +130,7 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
     storage,
     weather,
     weatherObservations,
+    irrigations,
     backupFile: new BackupFileAdapter(),
     createPlot: createPlotUseCase({ plots, clock, ids }),
     updatePlotDetails: updatePlotDetailsUseCase({ plots }),
@@ -134,11 +145,31 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
       inference,
       clock,
       ids,
-      agronomy: { weather, coefficients: POTATO_COEFFICIENTS },
+      agronomy: { weather, irrigations, coefficients: POTATO_COEFFICIENTS },
     }),
     computeCampaignState: computeCampaignStateUseCase({
       plots,
       campaigns,
+      weather,
+      irrigations,
+      coefficients: POTATO_COEFFICIENTS,
+      clock,
+    }),
+    recordIrrigation: recordIrrigationUseCase({ campaigns, irrigations, clock }),
+    adviseCampaign: adviseCampaignUseCase({
+      plots,
+      campaigns,
+      snapshots,
+      weatherObservations,
+      irrigations,
+      weather,
+      coefficients: POTATO_COEFFICIENTS,
+      clock,
+    }),
+    simulateScenario: simulateScenarioUseCase({
+      plots,
+      campaigns,
+      irrigations,
       weather,
       coefficients: POTATO_COEFFICIENTS,
       clock,
@@ -148,11 +179,43 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
       weatherObservations,
       clock,
     }),
-    getCampaignTimeline: getCampaignTimelineUseCase({ plots, campaigns, observations, snapshots }),
+    getCampaignTimeline: getCampaignTimelineUseCase({
+      plots,
+      campaigns,
+      observations,
+      snapshots,
+      irrigations,
+      weatherObservations,
+    }),
     applyImageRetention: applyImageRetentionUseCase({ images, observations, clock }),
     ensurePersistentStorage: ensurePersistentStorageUseCase({ storage }),
-    exportBackup: exportBackupUseCase({ plots, campaigns, observations, snapshots, images, clock }),
-    importBackup: importBackupUseCase({ plots, campaigns, observations, snapshots, images }),
-    eraseAllData: eraseAllDataUseCase({ plots, campaigns, observations, snapshots, images }),
+    exportBackup: exportBackupUseCase({
+      plots,
+      campaigns,
+      observations,
+      snapshots,
+      images,
+      weatherObservations,
+      irrigations,
+      clock,
+    }),
+    importBackup: importBackupUseCase({
+      plots,
+      campaigns,
+      observations,
+      snapshots,
+      images,
+      weatherObservations,
+      irrigations,
+    }),
+    eraseAllData: eraseAllDataUseCase({
+      plots,
+      campaigns,
+      observations,
+      snapshots,
+      images,
+      weatherObservations,
+      irrigations,
+    }),
   };
 }

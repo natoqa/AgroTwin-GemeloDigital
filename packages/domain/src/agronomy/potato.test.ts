@@ -86,6 +86,8 @@ describe('the potato coefficient file', () => {
       'leafWetnessHoursWhenDewObserved',
       'rainfallFactorLittle',
       'rainfallFactorHeavy',
+      'irrigationRefillFraction',
+      'fungicideProtectionDays',
       'coldNightTemperatureDrop',
     ]);
   });

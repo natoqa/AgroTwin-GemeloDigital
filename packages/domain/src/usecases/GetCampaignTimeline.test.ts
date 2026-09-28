@@ -7,6 +7,8 @@ import type { Diagnosis } from '../model/Diagnosis.js';
 import { CampaignNotFoundError } from '../errors/CampaignNotFoundError.js';
 import { MovableClock } from '../testing/doubles.js';
 import { createTestTwin } from '../testing/scenario.js';
+import { recordIrrigationUseCase } from './RecordIrrigation.js';
+import { recordWeatherObservationUseCase } from './RecordWeatherObservation.js';
 import type { TestTwin } from '../testing/scenario.js';
 
 const DIAGNOSIS: Diagnosis = { class: 'late_blight', confidence: 0.74, modelVersion: 'mock-1' };
@@ -87,6 +89,37 @@ describe('getCampaignTimelineUseCase', () => {
     expect(after.entries.every((entry) => entry.hasOriginalImage)).toBe(false);
     expect(after.entries.every((entry) => entry.thumbnailRef !== undefined)).toBe(true);
     expect(after.entries.every((entry) => entry.observation !== undefined)).toBe(true);
+  });
+
+  it('puts irrigations and weather answers on the same line as the photographs', async () => {
+    const { test, campaign, clock } = await campaignWithObservations(2, 5);
+    // Today is 7 September; the photographs were taken on the 2nd and the 7th.
+    await recordIrrigationUseCase({ ...test, clock })({
+      campaignId: campaign.id,
+      date: LocalDate.of(2026, 9, 7),
+    });
+    await recordWeatherObservationUseCase({ ...test, clock })({
+      plotId: campaign.plotId,
+      rainfall: 'a_lot',
+      coldNight: false,
+    });
+    // An answer from before planting belongs to no campaign of this one.
+    await recordWeatherObservationUseCase({ ...test, clock })({
+      plotId: campaign.plotId,
+      rainfall: 'none',
+      coldNight: false,
+      date: LocalDate.of(2026, 8, 20),
+    });
+
+    const timeline = await test.getCampaignTimeline(campaign.id);
+
+    expect(timeline.events.map((event) => `${event.date.toString()} ${event.kind}`)).toEqual([
+      '2026-09-02 photo',
+      '2026-09-06 weather_answer',
+      '2026-09-07 irrigation',
+      '2026-09-07 photo',
+    ]);
+    expect(timeline.events[2]?.dayOfCampaign).toBe(6);
   });
 
   it('refuses a campaign that does not exist', async () => {

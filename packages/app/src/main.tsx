@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { ContainerProvider } from './composition/ContainerContext';
 import { createContainer } from './composition/container';
+import { es } from './i18n/es';
 import './index.css';
 
 const root = document.getElementById('root');
@@ -41,9 +42,8 @@ createContainer()
   .catch(() => {
     reactRoot.render(
       <main>
-        <p role="alert" data-testid="startup-error">
-          No se pudo abrir el almacenamiento de este teléfono. Cierra la aplicación y vuelve a
-          abrirla.
+        <p role="alert" data-testid="startup-error" className="p-4 text-lg">
+          {es.app.startupError}
         </p>
       </main>,
     );

@@ -15,6 +15,7 @@ import type {
   CampaignStatus,
   DiagnosisClass,
   ImageKind,
+  Irrigation,
   Observation,
   Plot,
   ProvenanceEntry,
@@ -93,6 +94,16 @@ export interface ImageRecord {
   contentType: string;
   byteLength: number;
   storedAt: number;
+}
+
+/** One day the farmer watered, within one campaign. */
+export interface IrrigationRecord {
+  /** `campaignId|date`: one irrigation per campaign per day, by construction. */
+  id: string;
+  campaignId: string;
+  plotId: string;
+  date: string;
+  recordedAt: number;
 }
 
 /** Answers about one day's weather on one plot. */
@@ -253,6 +264,24 @@ export const toWeatherObservation = (record: WeatherObservationRecord): WeatherO
   date: LocalDate.parse(record.date),
   rainfall: record.rainfall,
   coldNight: record.coldNight === 1,
+  recordedAt: epochMillis(record.recordedAt),
+});
+
+export const irrigationKey = (campaignId: string, date: string): string =>
+  `${campaignId}|${date}`;
+
+export const toIrrigationRecord = (irrigation: Irrigation): IrrigationRecord => ({
+  id: irrigationKey(irrigation.campaignId, irrigation.date.toString()),
+  campaignId: irrigation.campaignId,
+  plotId: irrigation.plotId,
+  date: irrigation.date.toString(),
+  recordedAt: irrigation.recordedAt,
+});
+
+export const toIrrigation = (record: IrrigationRecord): Irrigation => ({
+  campaignId: campaignId(record.campaignId),
+  plotId: plotId(record.plotId),
+  date: LocalDate.parse(record.date),
   recordedAt: epochMillis(record.recordedAt),
 });
 

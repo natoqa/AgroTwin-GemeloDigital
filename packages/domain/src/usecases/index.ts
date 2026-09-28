@@ -1,3 +1,5 @@
+export { adviseCampaignUseCase } from './AdviseCampaign.js';
+export type { AdviseCampaignDependencies, CampaignAdvice } from './AdviseCampaign.js';
 export { applyImageRetentionUseCase } from './ApplyImageRetention.js';
 export type {
   ApplyImageRetentionDependencies,
@@ -24,9 +26,12 @@ export type {
   CampaignTimeline,
   GetCampaignTimelineDependencies,
   TimelineEntry,
+  TimelineEvent,
 } from './GetCampaignTimeline.js';
 export { importBackupUseCase } from './ImportBackup.js';
 export type { ImportBackupDependencies, ImportBackupSummary } from './ImportBackup.js';
+export { recordIrrigationUseCase } from './RecordIrrigation.js';
+export type { RecordIrrigationDependencies, RecordIrrigationInput } from './RecordIrrigation.js';
 export { recordObservationUseCase } from './RecordObservation.js';
 export type {
   RecordObservationDependencies,
@@ -38,6 +43,19 @@ export type {
   RecordWeatherObservationDependencies,
   RecordWeatherObservationInput,
 } from './RecordWeatherObservation.js';
+export {
+  FUNGICIDE_HORIZON_DAYS,
+  HARVEST_SEARCH_LIMIT_DAYS,
+  MAX_DAYS_WITHOUT_WATER,
+  simulateScenarioUseCase,
+} from './SimulateScenario.js';
+export type {
+  Scenario,
+  ScenarioAnswer,
+  ScenarioOutcome,
+  ScenarioPrecondition,
+  SimulateScenarioDependencies,
+} from './SimulateScenario.js';
 export { startCampaignUseCase } from './StartCampaign.js';
 export type { StartCampaignDependencies, StartCampaignInput } from './StartCampaign.js';
 export { updatePlotDetailsUseCase } from './UpdatePlotDetails.js';

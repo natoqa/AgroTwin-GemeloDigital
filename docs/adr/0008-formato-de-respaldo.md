@@ -46,6 +46,19 @@ parecería correcto.
 La importación es **idempotente**: se escribe por identificador, así que
 restaurar dos veces deja el mismo estado.
 
+**Versiones del formato.** La aplicación escribe siempre la versión vigente y
+lee todas las anteriores que sigan teniendo sentido:
+
+| Versión | Desde | Añade |
+|---|---|---|
+| 1 | Fase 2 | Parcelas, campañas, observaciones, snapshots, miniaturas |
+| 2 | Fase 4 | Respuestas de clima del agricultor y riegos registrados |
+
+Un archivo de versión 1 se restaura tal cual, sin respuestas de clima ni riegos,
+que es exactamente lo que contenía. La versión 2 corrige un hueco de la Fase 3:
+las respuestas de clima vivían en el teléfono pero **no entraban en el
+respaldo, y «Borrar todo» no las borraba**.
+
 El **nombre del archivo lo decide la capa de aplicación**, no el dominio: es
 texto que ve el usuario y por §5 va en español.
 

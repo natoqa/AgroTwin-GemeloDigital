@@ -10,12 +10,14 @@ import {
   observationId,
   plotId,
   snapshotId,
+  recordIrrigation,
   startCampaign,
   withOriginalPurged,
 } from '@agrotwin/domain';
 import type { Campaign, EpochMillis, Observation, Plot, TwinSnapshot } from '@agrotwin/domain';
 import { AgroTwinDb } from './AgroTwinDb.js';
 import { DexieCampaignRepository } from './DexieCampaignRepository.js';
+import { DexieIrrigationRepository } from './DexieIrrigationRepository.js';
 import { DexieObservationRepository } from './DexieObservationRepository.js';
 import { DexiePlotRepository } from './DexiePlotRepository.js';
 import { DexieSnapshotRepository } from './DexieSnapshotRepository.js';
@@ -247,6 +249,47 @@ describe('DexieSnapshotRepository', () => {
 
     expect(await repository.listByPlot(PLOT_ID)).toHaveLength(1);
     expect(await repository.latestForPlot(plotId('plot-3'))).toBeUndefined();
+  });
+});
+
+describe('DexieIrrigationRepository', () => {
+  const irrigationOn = (date: LocalDate, campaignOverride: Partial<Campaign> = {}) =>
+    recordIrrigation({
+      campaign: campaign(campaignOverride),
+      date,
+      recordedAt: AT,
+      today: LocalDate.of(2026, 9, 21),
+    });
+
+  it('lists a campaign oldest first, the way the water balance walks', async () => {
+    const irrigations = new DexieIrrigationRepository(db);
+    await irrigations.save(irrigationOn(LocalDate.of(2026, 9, 15)));
+    await irrigations.save(irrigationOn(LocalDate.of(2026, 9, 3)));
+    await irrigations.save(irrigationOn(LocalDate.of(2026, 9, 10)));
+
+    const stored = await irrigations.listByCampaign(CAMPAIGN_ID);
+
+    expect(stored.map((irrigation) => irrigation.date.toString())).toEqual([
+      '2026-09-03',
+      '2026-09-10',
+      '2026-09-15',
+    ]);
+    expect(stored[0]?.plotId).toBe(PLOT_ID);
+    expect(stored[0]?.recordedAt).toBe(AT);
+  });
+
+  it('keeps one record per day and each campaign to itself', async () => {
+    const irrigations = new DexieIrrigationRepository(db);
+    const day = LocalDate.of(2026, 9, 10);
+    await irrigations.save(irrigationOn(day));
+    await irrigations.save(irrigationOn(day));
+    await irrigations.save(irrigationOn(day, { id: campaignId('camp-2') }));
+
+    expect(await irrigations.listByCampaign(CAMPAIGN_ID)).toHaveLength(1);
+    expect(await irrigations.listAll()).toHaveLength(2);
+
+    await irrigations.deleteAll();
+    expect(await irrigations.listAll()).toHaveLength(0);
   });
 });
 

@@ -6,6 +6,8 @@ import { BackupFormatError } from '../errors/BackupFormatError.js';
 import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, parseBackup } from '../backup/BackupDocument.js';
 import { MovableClock, decodeBase64 } from '../testing/doubles.js';
 import { createTestTwin } from '../testing/scenario.js';
+import { recordIrrigationUseCase } from './RecordIrrigation.js';
+import { recordWeatherObservationUseCase } from './RecordWeatherObservation.js';
 import type { TestTwin } from '../testing/scenario.js';
 
 const DIAGNOSIS: Diagnosis = { class: 'early_blight', confidence: 0.81, modelVersion: 'mock-1' };
@@ -36,6 +38,20 @@ async function populated(): Promise<TestTwin> {
     clock.advanceDays(5);
   }
 
+  // What the farmer *said* is part of the twin as much as what they
+  // photographed. Phase 3 left it out of the backup; this keeps it in.
+  const weather = recordWeatherObservationUseCase({
+    plots: test.plots,
+    weatherObservations: test.weatherObservations,
+    clock,
+  });
+  await weather({ plotId: plot.id, rainfall: 'a_little', coldNight: true });
+  await recordIrrigationUseCase({
+    campaigns: test.campaigns,
+    irrigations: test.irrigations,
+    clock,
+  })({ campaignId: campaign.id });
+
   return test;
 }
 
@@ -45,6 +61,8 @@ async function stateOf(test: TestTwin) {
     campaigns: await test.campaigns.listAll(),
     observations: await test.observations.listAll(),
     snapshots: await test.snapshots.listAll(),
+    weatherObservations: await test.weatherObservations.listAll(),
+    irrigations: await test.irrigations.listAll(),
   };
 }
 
@@ -69,6 +87,8 @@ describe('backup round trip', () => {
       campaigns: [],
       observations: [],
       snapshots: [],
+      weatherObservations: [],
+      irrigations: [],
     });
 
     const summary = await test.importBackup(backup.contents);
@@ -79,6 +99,8 @@ describe('backup round trip', () => {
       observations: 2,
       snapshots: 2,
       images: 2,
+      weatherObservations: 1,
+      irrigations: 1,
     });
     expect(await stateOf(test)).toEqual(before);
 
@@ -146,9 +168,51 @@ describe('importBackupUseCase refusals', () => {
   it('refuses a format version it cannot read', async () => {
     const test = await populated();
     const backup = await test.exportBackup();
-    const future = backup.contents.replace('"formatVersion": 1', '"formatVersion": 99');
+    const future = backup.contents.replace('"formatVersion": 2', '"formatVersion": 99');
 
     await expect(test.importBackup(future)).rejects.toThrow(/format version 99/u);
+  });
+
+  it('still restores a version 1 file, which held no weather answers', async () => {
+    const test = await populated();
+    const backup = await test.exportBackup();
+    const before = await stateOf(test);
+    await test.eraseAllData();
+
+    const older = JSON.parse(backup.contents) as Record<string, unknown>;
+    older['formatVersion'] = 1;
+    delete older['weatherObservations'];
+    delete older['irrigations'];
+
+    const summary = await test.importBackup(JSON.stringify(older));
+
+    expect(summary.weatherObservations).toBe(0);
+    expect(summary.irrigations).toBe(0);
+    expect(await stateOf(test)).toEqual({ ...before, weatherObservations: [], irrigations: [] });
+  });
+
+  it('refuses a weather answer for a plot that is not in the file', async () => {
+    const test = await populated();
+    const backup = await test.exportBackup();
+    await test.eraseAllData();
+
+    const orphaned = JSON.parse(backup.contents) as { weatherObservations: { plotId: string }[] };
+    for (const answer of orphaned.weatherObservations) answer.plotId = 'elsewhere';
+
+    await expect(test.importBackup(JSON.stringify(orphaned))).rejects.toThrow(/weather answer/u);
+    expect((await stateOf(test)).plots).toEqual([]);
+  });
+
+  it('refuses an irrigation for a campaign that is not in the file', async () => {
+    const test = await populated();
+    const backup = await test.exportBackup();
+    await test.eraseAllData();
+
+    const orphaned = JSON.parse(backup.contents) as { irrigations: { campaignId: string }[] };
+    for (const irrigation of orphaned.irrigations) irrigation.campaignId = 'elsewhere';
+
+    await expect(test.importBackup(JSON.stringify(orphaned))).rejects.toThrow(/irrigation/u);
+    expect((await stateOf(test)).campaigns).toEqual([]);
   });
 
   it('refuses a file whose references do not resolve, writing nothing', async () => {
@@ -165,6 +229,8 @@ describe('importBackupUseCase refusals', () => {
       campaigns: [],
       observations: [],
       snapshots: [],
+      weatherObservations: [],
+      irrigations: [],
     });
   });
 });

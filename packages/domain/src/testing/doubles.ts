@@ -7,6 +7,9 @@ import type { CampaignId, ImageRef, ObservationId, PlotId, SnapshotId } from '..
 import type { Observation } from '../model/Observation.js';
 import type { Plot } from '../model/Plot.js';
 import type { TwinSnapshot } from '../model/TwinSnapshot.js';
+import type { LocalDate } from '../model/LocalDate.js';
+import type { WeatherObservation } from '../model/WeatherObservation.js';
+import type { Irrigation } from '../model/Irrigation.js';
 import type { CampaignRepositoryPort } from '../ports/CampaignRepositoryPort.js';
 import type { ClockPort } from '../ports/ClockPort.js';
 import type { IdGeneratorPort } from '../ports/IdGeneratorPort.js';
@@ -17,10 +20,12 @@ import type {
   StoredImagePair,
 } from '../ports/ImageStorePort.js';
 import type { InferencePort } from '../ports/InferencePort.js';
+import type { IrrigationRepositoryPort } from '../ports/IrrigationRepositoryPort.js';
 import type { ObservationRepositoryPort } from '../ports/ObservationRepositoryPort.js';
 import type { PlotRepositoryPort } from '../ports/PlotRepositoryPort.js';
 import type { SnapshotRepositoryPort } from '../ports/SnapshotRepositoryPort.js';
 import type { StoragePort, StorageStatus } from '../ports/StoragePort.js';
+import type { WeatherObservationRepositoryPort } from '../ports/WeatherObservationRepositoryPort.js';
 
 /**
  * In-memory stand-ins for every port, shared by the domain's tests.
@@ -102,6 +107,60 @@ export class InMemoryObservations implements ObservationRepositoryPort {
     return [...this.items.values()].find((observation) => observation.imageRef === ref);
   }
   async listAll(): Promise<readonly Observation[]> {
+    return [...this.items.values()];
+  }
+  async deleteAll(): Promise<void> {
+    this.items.clear();
+  }
+}
+
+export class InMemoryWeatherObservations implements WeatherObservationRepositoryPort {
+  readonly items = new Map<string, WeatherObservation>();
+
+  private static key(plotId: PlotId, date: LocalDate): string {
+    return `${plotId}|${date.toString()}`;
+  }
+
+  async save(observation: WeatherObservation): Promise<void> {
+    this.items.set(InMemoryWeatherObservations.key(observation.plotId, observation.date), observation);
+  }
+  async findByDate(plotId: PlotId, date: LocalDate): Promise<WeatherObservation | undefined> {
+    return this.items.get(InMemoryWeatherObservations.key(plotId, date));
+  }
+  async listBetween(
+    plotId: PlotId,
+    from: LocalDate,
+    to: LocalDate,
+  ): Promise<readonly WeatherObservation[]> {
+    return [...this.items.values()]
+      .filter(
+        (observation) =>
+          observation.plotId === plotId &&
+          from.daysUntil(observation.date) >= 0 &&
+          observation.date.daysUntil(to) >= 0,
+      )
+      .sort((left, right) => left.date.toEpochDay() - right.date.toEpochDay());
+  }
+  async listAll(): Promise<readonly WeatherObservation[]> {
+    return [...this.items.values()];
+  }
+  async deleteAll(): Promise<void> {
+    this.items.clear();
+  }
+}
+
+export class InMemoryIrrigations implements IrrigationRepositoryPort {
+  readonly items = new Map<string, Irrigation>();
+
+  async save(irrigation: Irrigation): Promise<void> {
+    this.items.set(`${irrigation.campaignId}|${irrigation.date.toString()}`, irrigation);
+  }
+  async listByCampaign(campaignId: CampaignId): Promise<readonly Irrigation[]> {
+    return [...this.items.values()]
+      .filter((irrigation) => irrigation.campaignId === campaignId)
+      .sort((left, right) => left.date.toEpochDay() - right.date.toEpochDay());
+  }
+  async listAll(): Promise<readonly Irrigation[]> {
     return [...this.items.values()];
   }
   async deleteAll(): Promise<void> {

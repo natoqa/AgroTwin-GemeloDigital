@@ -4,7 +4,7 @@ import type { Coefficients } from '../agronomy/Coefficients.js';
 import { cropStageOnDay } from '../agronomy/CropStage.js';
 import { referenceEvapotranspiration } from '../agronomy/Et0Hargreaves.js';
 import { baseTemperatureOf, dailyGrowingDegreeDays } from '../agronomy/Gdd.js';
-import { lateBlightRiskFor } from '../agronomy/LateBlightRisk.js';
+import { lateBlightRiskFor, protectedBlightRisk } from '../agronomy/LateBlightRisk.js';
 import type { BlightRisk } from '../agronomy/LateBlightRisk.js';
 import { estimatePhenologicalStage } from '../agronomy/PhenologicalStage.js';
 import type { PhenologicalStage } from '../agronomy/PhenologicalStage.js';
@@ -42,6 +42,10 @@ import type { DailyWeather } from '../model/Weather.js';
  */
 
 const GDD_KEYS = ['gddBaseTemperature'] as const;
+/** Needed only by campaigns in which the farmer reported watering. */
+const IRRIGATION_KEYS = ['irrigationRefillFraction'] as const;
+/** Needed only when a fungicide application is being simulated. */
+const FUNGICIDE_KEYS = ['fungicideProtectionDays'] as const;
 const WATER_KEYS = [
   'kcInitial',
   'kcMid',
@@ -62,8 +66,21 @@ export interface BehaviorEngineInput {
   readonly coefficients: Coefficients;
   /** Oldest first. Days the sources could not supply are simply missing. */
   readonly weather: readonly DailyWeather[];
-  /** Irrigation the farmer reported, keyed by `YYYY-MM-DD`. */
-  readonly irrigationByDate?: ReadonlyMap<string, Millimeters>;
+  /**
+   * Days the farmer reported watering, as `YYYY-MM-DD`.
+   *
+   * A day, not an amount: each one makes up `irrigationRefillFraction` of the
+   * shortfall the root zone carried into that day.
+   */
+  readonly irrigatedDates?: ReadonlySet<string>;
+  /**
+   * Days a fungicide is applied, as `YYYY-MM-DD`.
+   *
+   * Only the Simulator sets this today: it is how "what if I spray today?" is
+   * asked. On the day of an application the accumulated blight severity starts
+   * again from zero, and for `fungicideProtectionDays` days nothing is added.
+   */
+  readonly fungicideDates?: ReadonlySet<string>;
 }
 
 export interface TwinDayState {
@@ -103,7 +120,15 @@ export interface BehaviorEngineResult {
 export function runBehaviorEngine(input: BehaviorEngineInput): BehaviorEngineResult {
   const { coefficients } = input;
 
-  const unavailable = [...GDD_KEYS, ...WATER_KEYS].filter((key) => !coefficients.has(key));
+  const irrigatedDates = input.irrigatedDates ?? new Set<string>();
+  const fungicideDates = input.fungicideDates ?? new Set<string>();
+  const needed = [
+    ...GDD_KEYS,
+    ...WATER_KEYS,
+    ...(irrigatedDates.size > 0 ? IRRIGATION_KEYS : []),
+    ...(fungicideDates.size > 0 ? FUNGICIDE_KEYS : []),
+  ];
+  const unavailable = needed.filter((key) => !coefficients.has(key));
   if (unavailable.length > 0) {
     return { days: [], unavailable };
   }
@@ -120,6 +145,20 @@ export function runBehaviorEngine(input: BehaviorEngineInput): BehaviorEngineRes
 
   const gddConfidence = coefficients.confidenceFor([...GDD_KEYS]);
   const waterConfidence = coefficients.confidenceFor([...WATER_KEYS]);
+  // From the first reported irrigation on, the balance also leans on how much
+  // one irrigation is assumed to make up, and it costs what that is worth.
+  const irrigatedWaterConfidence =
+    irrigatedDates.size > 0
+      ? waterConfidence * coefficients.confidenceFor([...IRRIGATION_KEYS])
+      : waterConfidence;
+  const refillFraction =
+    irrigatedDates.size > 0 ? coefficients.require('irrigationRefillFraction') : 0;
+  const protectionDays =
+    fungicideDates.size > 0 ? coefficients.require('fungicideProtectionDays') : 0;
+  const fungicideConfidence =
+    fungicideDates.size > 0 ? coefficients.confidenceFor([...FUNGICIDE_KEYS]) : 1;
+  // Epoch day of the last protected day; -Infinity while nothing was sprayed.
+  let protectedThrough = Number.NEGATIVE_INFINITY;
 
   // The soil starts at field capacity. It is an assumption, and it is the one
   // FAO-56 makes for a season beginning after the rains; it is declared in the
@@ -127,6 +166,7 @@ export function runBehaviorEngine(input: BehaviorEngineInput): BehaviorEngineRes
   let depletion = millimeters(0);
   let accumulated = 0;
   let blightTotal = 0;
+  let irrigatedSoFar = false;
 
   const days: TwinDayState[] = [];
 
@@ -148,10 +188,12 @@ export function runBehaviorEngine(input: BehaviorEngineInput): BehaviorEngineRes
     });
     const cropEt = cropEvapotranspiration(referenceEt, cropCoefficient);
 
+    const irrigatedToday = irrigatedDates.has(day.date.toString());
+    irrigatedSoFar ||= irrigatedToday;
     const waterBalance = advanceWaterBalance({
       previousDepletion: depletion,
       rainfall: day.rainfall,
-      irrigation: input.irrigationByDate?.get(day.date.toString()) ?? millimeters(0),
+      irrigation: millimeters(irrigatedToday ? refillFraction * depletion : 0),
       cropEt,
       totalAvailable,
       depletionFraction,
@@ -162,10 +204,19 @@ export function runBehaviorEngine(input: BehaviorEngineInput): BehaviorEngineRes
       day.leafWetnessHours === undefined || day.wetPeriodMeanTemperature === undefined
         ? undefined
         : { wetHours: day.leafWetnessHours, meanTemperature: day.wetPeriodMeanTemperature };
-    const lateBlightRisk = lateBlightRiskFor(blightTotal, wetPeriod);
+    const epochDay = day.date.toEpochDay();
+    if (fungicideDates.has(day.date.toString())) {
+      blightTotal = 0;
+      protectedThrough = epochDay + protectionDays - 1;
+    }
+    const lateBlightRisk =
+      wetPeriod !== undefined && epochDay <= protectedThrough
+        ? protectedBlightRisk(blightTotal, wetPeriod)
+        : lateBlightRiskFor(blightTotal, wetPeriod);
     if (lateBlightRisk) blightTotal = lateBlightRisk.accumulatedSeverity;
 
     const stage = estimatePhenologicalStage(accumulatedGdd, coefficients);
+    const dayWaterConfidence = irrigatedSoFar ? irrigatedWaterConfidence : waterConfidence;
 
     days.push({
       date: day.date,
@@ -178,8 +229,13 @@ export function runBehaviorEngine(input: BehaviorEngineInput): BehaviorEngineRes
       cropEt,
       waterBalance,
       ...(lateBlightRisk === undefined ? {} : { lateBlightRisk }),
-      confidence: day.confidence * Math.min(gddConfidence, waterConfidence),
-      provenance: provenanceFor(day, gddConfidence, waterConfidence, lateBlightRisk !== undefined),
+      confidence: day.confidence * Math.min(gddConfidence, dayWaterConfidence),
+      provenance: provenanceFor(
+        day,
+        gddConfidence,
+        dayWaterConfidence,
+        lateBlightRisk === undefined ? undefined : fungicideConfidence,
+      ),
     });
   }
 
@@ -194,17 +250,18 @@ function provenanceFor(
   day: DailyWeather,
   gddConfidence: number,
   waterConfidence: number,
-  blightJudged: boolean,
+  /** Undefined when blight was not judged; otherwise what its inputs cost. */
+  blightConfidence: number | undefined,
 ): readonly ProvenanceEntry[] {
   const entries: ProvenanceEntry[] = [
     { field: 'accumulatedGdd', source: day.source, confidence: day.confidence * gddConfidence },
     { field: 'waterBalance', source: day.source, confidence: day.confidence * waterConfidence },
   ];
-  if (blightJudged) {
+  if (blightConfidence !== undefined) {
     entries.push({
       field: 'lateBlightRisk',
       source: day.source,
-      confidence: day.confidence,
+      confidence: day.confidence * blightConfidence,
     });
   }
   return entries;

@@ -19,6 +19,7 @@ import type { ClockPort } from '../ports/ClockPort.js';
 import type { IdGeneratorPort } from '../ports/IdGeneratorPort.js';
 import type { ImageStorePort } from '../ports/ImageStorePort.js';
 import type { InferencePort } from '../ports/InferencePort.js';
+import type { IrrigationRepositoryPort } from '../ports/IrrigationRepositoryPort.js';
 import type { ObservationRepositoryPort } from '../ports/ObservationRepositoryPort.js';
 import type { PlotRepositoryPort } from '../ports/PlotRepositoryPort.js';
 import type { SnapshotRepositoryPort } from '../ports/SnapshotRepositoryPort.js';
@@ -40,6 +41,7 @@ export interface RecordObservationDependencies {
    */
   readonly agronomy?: {
     readonly weather: WeatherPort;
+    readonly irrigations: IrrigationRepositoryPort;
     readonly coefficients: Coefficients;
   };
 }
@@ -140,11 +142,13 @@ async function agronomicStateFor(
   const weather = await deps.agronomy.weather.weatherBetween(campaign.plantingDate, date, plot);
   if (weather.length === 0) return undefined;
 
+  const irrigations = await deps.agronomy.irrigations.listByCampaign(campaign.id);
   const result = runBehaviorEngine({
     campaign,
     location: plot.location,
     coefficients: deps.agronomy.coefficients,
     weather,
+    irrigatedDates: new Set(irrigations.map((irrigation) => irrigation.date.toString())),
   });
   return result.latest;
 }

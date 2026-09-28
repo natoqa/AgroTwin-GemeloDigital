@@ -2,6 +2,11 @@ import { useState } from 'react';
 import type { ChangeEvent } from 'react';
 import type { Campaign, Plot, TwinSnapshot } from '@agrotwin/domain';
 import { useContainer } from '../../composition/ContainerContext';
+import { es } from '../../i18n/es';
+import { Banner } from '../../ui/Card';
+import { Field } from '../../ui/Field';
+import { Icon } from '../../ui/Icon';
+import { Screen } from '../../ui/Screen';
 
 /**
  * Takes the photograph and turns it into a snapshot.
@@ -9,7 +14,10 @@ import { useContainer } from '../../composition/ContainerContext';
  * Capture goes through `<input capture="environment">` rather than
  * `getUserMedia`: it hands the job to the system camera, which the farmer
  * already knows, and avoids permission and MediaStream lifecycle handling on a
- * low-end phone. A live preview is a Phase 4 question.
+ * low-end phone.
+ *
+ * The file input is styled as the screen's one big button — its label is the
+ * tap target — so the native "Choose file" control never shows.
  */
 export function CaptureScreen({
   plot,
@@ -42,28 +50,40 @@ export function CaptureScreen({
       });
       onRecorded(snapshot);
     } catch {
-      setError('No se pudo guardar la foto. Intenta de nuevo.');
+      setError(es.capture.failed);
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <section data-testid="capture-screen">
-      <h1>Foto de {plot.name}</h1>
-      <p>Toma una foto de una hoja.</p>
+    <Screen
+      title={es.capture.title(plot.name)}
+      back={{ label: es.common.back, onClick: onBack }}
+      testId="capture-screen"
+    >
+      <p className="text-lg">{es.capture.help}</p>
 
-      <label htmlFor="observation-note">¿Quieres apuntar algo? (opcional)</label>
-      <input
+      <Field
         id="observation-note"
         data-testid="observation-note"
+        label={es.capture.noteLabel}
         type="text"
         value={note}
         onChange={(event) => setNote(event.target.value)}
         autoComplete="off"
       />
 
-      <label htmlFor="photo">Foto de la hoja</label>
+      <label
+        htmlFor="photo"
+        className={[
+          'flex min-h-20 cursor-pointer items-center justify-center gap-3 rounded-xl border-2 px-5 text-xl font-bold',
+          busy ? 'border-line bg-canvas text-muted' : 'border-brand bg-brand text-paper',
+        ].join(' ')}
+      >
+        <Icon name="camera" className="h-8 w-8" />
+        <span>{es.capture.photoLabel}</span>
+      </label>
       <input
         id="photo"
         data-testid="photo-input"
@@ -72,18 +92,19 @@ export function CaptureScreen({
         capture="environment"
         onChange={(event) => void onPick(event)}
         disabled={busy}
+        className="sr-only"
       />
 
-      {busy ? <p data-testid="analysing">Analizando…</p> : null}
-      {error ? (
-        <p role="alert" data-testid="capture-error">
-          {error}
+      {busy ? (
+        <p data-testid="analysing" role="status" className="text-lg font-semibold">
+          {es.capture.analysing}
         </p>
       ) : null}
-
-      <button type="button" onClick={onBack}>
-        Volver
-      </button>
-    </section>
+      {error ? (
+        <Banner tone="now" alert testId="capture-error">
+          {error}
+        </Banner>
+      ) : null}
+    </Screen>
   );
 }

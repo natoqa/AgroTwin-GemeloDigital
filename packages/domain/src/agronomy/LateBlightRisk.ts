@@ -94,6 +94,8 @@ export interface BlightRisk {
   readonly accumulatedSeverity: number;
   /** Whether the accumulated total has reached the advisory threshold. */
   readonly sprayAdvised: boolean;
+  /** True on days inside the protection period of a fungicide application. */
+  readonly protectedByFungicide?: true;
 }
 
 export function accumulateBlightRisk(
@@ -107,6 +109,24 @@ export function accumulateBlightRisk(
     dailySeverity,
     accumulatedSeverity,
     sprayAdvised: accumulatedSeverity >= FIRST_SPRAY_SEVERITY_TOTAL,
+  };
+}
+
+/**
+ * The risk for a day covered by a fungicide application.
+ *
+ * The day's severity is still reported, because the weather did what it did,
+ * but it does not add to the total and no spray is advised: the crop is
+ * already protected. This is a modelling simplification for the what-if
+ * scenario of CLAUDE.md §8.3, not part of Wallin (1962); see
+ * `docs/agronomy/sources.md`.
+ */
+export function protectedBlightRisk(previousTotal: number, period: WetPeriod): BlightRisk {
+  return {
+    dailySeverity: dailySeverityValue(period),
+    accumulatedSeverity: previousTotal,
+    sprayAdvised: false,
+    protectedByFungicide: true,
   };
 }
 

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { Server } from 'node:http';
-import { EXPECTED_LABELS, TODAY, runSlice } from './flows.js';
+import { EXPECTED_LABELS, TODAY_LABEL, runSlice } from './flows.js';
 import { startStaticServer, stopStaticServer } from './staticServer.js';
 
 const PORT = 4173;
@@ -68,7 +68,7 @@ test.describe('vertical slice', () => {
     await expect(page.getByTestId('confidence')).toBeVisible();
     await expect(page.getByTestId('provenance')).toBeVisible();
     await expect(page.getByTestId('campaign-day')).toContainText('Día 0');
-    await expect(page.getByTestId('snapshot-history')).toContainText(TODAY);
+    await expect(page.getByTestId('snapshot-history')).toContainText(TODAY_LABEL);
   });
 
   test('the snapshot survives a reload, because it lives in the device', async ({ page }) => {

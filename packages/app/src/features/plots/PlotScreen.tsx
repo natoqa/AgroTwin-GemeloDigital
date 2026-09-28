@@ -3,14 +3,19 @@ import type { FormEvent } from 'react';
 import type { Plot, PlotDetailsUpdate } from '@agrotwin/domain';
 import { DomainError } from '@agrotwin/domain';
 import { useContainer } from '../../composition/ContainerContext';
+import { es } from '../../i18n/es';
+import { Button } from '../../ui/Button';
+import { Banner } from '../../ui/Card';
+import { Field } from '../../ui/Field';
+import { Screen, Section } from '../../ui/Screen';
 
 /**
  * The details of one plot: what it is called, how big it is, and where.
  *
  * Area and location are optional everywhere else, and they are optional here
- * too, but this is where they can be filled in. Phase 3 cannot estimate
- * evapotranspiration without a latitude, so the screen says why it is asking
- * instead of presenting an unexplained pair of number boxes.
+ * too, but this is where they can be filled in. The water balance cannot run
+ * without a latitude, so the screen says why it is asking instead of
+ * presenting an unexplained pair of number boxes.
  */
 export function PlotScreen({
   plot,
@@ -61,107 +66,93 @@ export function PlotScreen({
       setSaved(true);
       onSaved(updated);
     } catch (cause) {
-      setError(cause instanceof DomainError ? messageFor(cause) : 'No se pudo guardar.');
+      setError(
+        (cause instanceof DomainError ? es.plot.errors[cause.code] : undefined) ??
+          es.common.saveFailed,
+      );
     }
   };
 
   return (
-    <section data-testid="plot-screen">
-      <h1>{plot.name}</h1>
+    <Screen
+      title={plot.name}
+      back={{ label: es.common.myPlots, onClick: onBack }}
+      testId="plot-screen"
+    >
+      <Button variant="primary" icon="sprout" wide onClick={onOpenCampaigns} data-testid="go-campaigns">
+        {es.plot.campaigns}
+      </Button>
 
-      <button type="button" onClick={onOpenCampaigns} data-testid="go-campaigns">
-        Campañas de esta parcela
-      </button>
+      <Section title={es.plot.detailsTitle} icon="pin">
+        <p className="text-lg text-muted">{es.plot.detailsHelp}</p>
 
-      <h2>Datos de la parcela</h2>
-      <p>
-        La ubicación sirve para calcular el clima de tu parcela. Si no la sabes, puedes dejarla en
-        blanco y llenarla después.
-      </p>
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <Field
+            id="plot-detail-name"
+            data-testid="plot-detail-name"
+            label={es.plot.name}
+            type="text"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            autoComplete="off"
+          />
+          <Field
+            id="plot-area"
+            data-testid="plot-area"
+            label={es.plot.area}
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            value={area}
+            onChange={(event) => setArea(event.target.value)}
+          />
+          <Field
+            id="plot-latitude"
+            data-testid="plot-latitude"
+            label={es.plot.latitude}
+            type="number"
+            inputMode="decimal"
+            step="0.0001"
+            value={latitude}
+            onChange={(event) => setLatitude(event.target.value)}
+          />
+          <Field
+            id="plot-longitude"
+            data-testid="plot-longitude"
+            label={es.plot.longitude}
+            type="number"
+            inputMode="decimal"
+            step="0.0001"
+            value={longitude}
+            onChange={(event) => setLongitude(event.target.value)}
+          />
+          <Field
+            id="plot-altitude"
+            data-testid="plot-altitude"
+            label={es.plot.altitude}
+            type="number"
+            inputMode="numeric"
+            step="1"
+            value={altitude}
+            onChange={(event) => setAltitude(event.target.value)}
+          />
 
-      <form onSubmit={submit}>
-        <label htmlFor="plot-detail-name">Nombre</label>
-        <input
-          id="plot-detail-name"
-          data-testid="plot-detail-name"
-          type="text"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          autoComplete="off"
-        />
+          <Button type="submit" variant="primary" icon="check" wide data-testid="save-plot-details">
+            {es.plot.save}
+          </Button>
+        </form>
 
-        <label htmlFor="plot-area">Tamaño en hectáreas</label>
-        <input
-          id="plot-area"
-          data-testid="plot-area"
-          type="number"
-          inputMode="decimal"
-          step="0.01"
-          value={area}
-          onChange={(event) => setArea(event.target.value)}
-        />
-
-        <label htmlFor="plot-latitude">Latitud</label>
-        <input
-          id="plot-latitude"
-          data-testid="plot-latitude"
-          type="number"
-          inputMode="decimal"
-          step="0.0001"
-          value={latitude}
-          onChange={(event) => setLatitude(event.target.value)}
-        />
-
-        <label htmlFor="plot-longitude">Longitud</label>
-        <input
-          id="plot-longitude"
-          data-testid="plot-longitude"
-          type="number"
-          inputMode="decimal"
-          step="0.0001"
-          value={longitude}
-          onChange={(event) => setLongitude(event.target.value)}
-        />
-
-        <label htmlFor="plot-altitude">Altura sobre el mar, en metros</label>
-        <input
-          id="plot-altitude"
-          data-testid="plot-altitude"
-          type="number"
-          inputMode="numeric"
-          step="1"
-          value={altitude}
-          onChange={(event) => setAltitude(event.target.value)}
-        />
-
-        <button type="submit" data-testid="save-plot-details">
-          Guardar datos
-        </button>
-      </form>
-
-      {saved ? <p data-testid="plot-saved">Datos guardados.</p> : null}
-      {error ? (
-        <p role="alert" data-testid="plot-detail-error">
-          {error}
-        </p>
-      ) : null}
-
-      <button type="button" onClick={onBack}>
-        Mis parcelas
-      </button>
-    </section>
+        {saved ? (
+          <Banner tone="good" icon="check" testId="plot-saved">
+            {es.plot.saved}
+          </Banner>
+        ) : null}
+        {error ? (
+          <Banner tone="now" alert testId="plot-detail-error">
+            {error}
+          </Banner>
+        ) : null}
+      </Section>
+    </Screen>
   );
-}
-
-function messageFor(error: DomainError): string {
-  switch (error.code) {
-    case 'INVALID_PLOT_NAME':
-      return 'Escribe un nombre para la parcela.';
-    case 'INVALID_AREA':
-      return 'El tamaño debe ser un número mayor que cero.';
-    case 'INVALID_COORDINATES':
-      return 'Revisa la latitud, la longitud y la altura.';
-    default:
-      return 'No se pudo guardar.';
-  }
 }

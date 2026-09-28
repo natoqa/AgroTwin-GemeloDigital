@@ -9,6 +9,7 @@ import type { WeatherPort } from '../ports/WeatherPort.js';
 import {
   InMemoryCampaigns,
   InMemoryImageStore,
+  InMemoryIrrigations,
   InMemoryObservations,
   InMemoryPlots,
   InMemorySnapshots,
@@ -86,7 +87,13 @@ async function subject(options: { located: boolean; weather?: WeatherPort }) {
     ids,
     ...(options.weather === undefined
       ? {}
-      : { agronomy: { weather: options.weather, coefficients: POTATO_COEFFICIENTS } }),
+      : {
+          agronomy: {
+            weather: options.weather,
+            irrigations: new InMemoryIrrigations(),
+            coefficients: POTATO_COEFFICIENTS,
+          },
+        }),
   });
 
   return { execute, campaign };

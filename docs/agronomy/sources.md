@@ -177,7 +177,15 @@ código implementa la ecuación que dice implementar.
 
 ## 4. Pendiente de revisión agronómica (CLAUDE.md §19)
 
-Nueve entradas. Ninguna tiene fuente verificada y todas reducen la confianza.
+**Diecisiete entradas de 25: diez provisionales y siete ausentes.** Ninguna
+tiene fuente verificada; las provisionales reducen la confianza y las ausentes
+apagan el modelo que las necesita. La lista la comprueba
+`potato.test.ts`, así que este número no puede quedar desactualizado sin que
+falle un test.
+
+> **Corrección (Fase 4).** Hasta la Fase 3 este apartado decía «nueve» y
+> CLAUDE.md «doce»; el archivo tenía en realidad **quince**. La Fase 4 añade
+> dos (`irrigationRefillFraction`, `fungicideProtectionDays`).
 
 ### 4.1 Provisionales (tienen valor, pero no verificado para aquí)
 
@@ -188,6 +196,7 @@ Nueve entradas. Ninguna tiene fuente verificada y todas reducen la confianza.
 | `rainfallFactorLittle` | 0.5 | Decisión de modelado | Multiplica la lluvia de las normales cuando el agricultor dice «llovió poco». Sin respaldo publicado |
 | `rainfallFactorHeavy` | 2.0 | Decisión de modelado | Ídem para «llovió mucho» |
 | `coldNightTemperatureDrop` | 3 °C | Decisión de modelado | Cuánto baja la mínima cuando el agricultor reporta noche fría. Sin respaldo publicado |
+| `irrigationRefillFraction` | 1.0 | Decisión de modelado (Fase 4) | El agricultor dice **que** regó, no cuánto. Cada riego repone esta fracción del agotamiento del día anterior; 1 = el suelo vuelve a capacidad de campo. Hace falta saber si el riego por surco en la sierra realmente llena la zona radicular. Solo cuesta confianza en campañas donde se registró algún riego |
 | `stageLengthInitial` | 25 d | FAO-56 Tabla 11, papa, clima continental, siembra de mayo (25/30/45/30, total 130 d) | FAO-56 **no publica** una fila para los Andes peruanos. Hace falta la duración de etapas para la sierra de La Libertad |
 | `stageLengthDevelopment` | 30 d | ídem | ídem |
 | `stageLengthMid` | 45 d | ídem | ídem |
@@ -203,6 +212,22 @@ Nueve entradas. Ninguna tiene fuente verificada y todas reducen la confianza.
 | `gddToBulking` | Tiempo térmico al inicio del llenado | ídem |
 | `gddToMaturity` | Tiempo térmico a madurez | ídem |
 | `leafWetnessHoursWhenDewObserved` | Horas de humedad foliar a suponer cuando el agricultor reporta hoja mojada al amanecer | **El riesgo de tizón no se calcula nunca.** Ver ADR-0009 |
+| `fungicideProtectionDays` | Cuántos días protege una aplicación de fungicida (Fase 4) | **El escenario «¿y si aplico fungicida hoy?» se niega a responder.** Depende del producto (de contacto o sistémico), la dosis y la lluvia que lo lava. Ver ADR-0010 |
+
+**De `gddToMaturity` a fecha de cosecha (Fase 4).** Mientras no haya
+umbral de madurez, el Simulador estima la cosecha como siembra + la suma de las
+cuatro duraciones de etapa de FAO-56 (130 días, provisionales). Esa estimación
+ignora el clima del año y lleva la confianza de cuatro coeficientes
+provisionales (0.6⁴ ≈ 0.13). La pantalla la presenta como «fecha aproximada».
+Con `gddToMaturity` y su fuente, pasa sola al reloj térmico.
+
+**Simplificación del escenario de fungicida (Fase 4).** Wallin (1962) no modela
+aplicaciones. Para responder la pregunta de §8.3 se adopta una regla declarada:
+el día de la aplicación la severidad acumulada vuelve a cero y, durante
+`fungicideProtectionDays` días, no se suma nada; después, la cuenta sigue desde
+cero. BLITECAST decide las aplicaciones siguientes con otra regla (Krause,
+Massie y Hyre, 1975) que aquí **no** se implementa. Hoy el escenario está doblemente
+apagado: falta la humedad foliar y falta la duración de la protección.
 
 **Qué significa esto en la práctica.** Hoy el gemelo acumula grados-día
 correctamente y **dice que no sabe en qué etapa está el cultivo**. Es el

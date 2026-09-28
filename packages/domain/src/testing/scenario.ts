@@ -15,9 +15,11 @@ import { updatePlotDetailsUseCase } from '../usecases/UpdatePlotDetails.js';
 import {
   InMemoryCampaigns,
   InMemoryImageStore,
+  InMemoryIrrigations,
   InMemoryObservations,
   InMemoryPlots,
   InMemorySnapshots,
+  InMemoryWeatherObservations,
   countingIds,
   stubInference,
 } from './doubles.js';
@@ -46,6 +48,8 @@ export function createTestTwin(options: TestTwinOptions) {
   const observations = new InMemoryObservations();
   const snapshots = new InMemorySnapshots();
   const images = new InMemoryImageStore(clock);
+  const weatherObservations = new InMemoryWeatherObservations();
+  const irrigations = new InMemoryIrrigations();
   const inference = stubInference(diagnosis);
 
   return {
@@ -54,6 +58,8 @@ export function createTestTwin(options: TestTwinOptions) {
     observations,
     snapshots,
     images,
+    weatherObservations,
+    irrigations,
     clock,
     ids,
     createPlot: createPlotUseCase({ plots, clock, ids }),
@@ -70,7 +76,14 @@ export function createTestTwin(options: TestTwinOptions) {
       clock,
       ids,
     }),
-    getCampaignTimeline: getCampaignTimelineUseCase({ plots, campaigns, observations, snapshots }),
+    getCampaignTimeline: getCampaignTimelineUseCase({
+      plots,
+      campaigns,
+      observations,
+      snapshots,
+      irrigations,
+      weatherObservations,
+    }),
     applyImageRetention: applyImageRetentionUseCase({
       images,
       observations,
@@ -83,10 +96,28 @@ export function createTestTwin(options: TestTwinOptions) {
       observations,
       snapshots,
       images,
+      weatherObservations,
+      irrigations,
       clock,
     }),
-    importBackup: importBackupUseCase({ plots, campaigns, observations, snapshots, images }),
-    eraseAllData: eraseAllDataUseCase({ plots, campaigns, observations, snapshots, images }),
+    importBackup: importBackupUseCase({
+      plots,
+      campaigns,
+      observations,
+      snapshots,
+      images,
+      weatherObservations,
+      irrigations,
+    }),
+    eraseAllData: eraseAllDataUseCase({
+      plots,
+      campaigns,
+      observations,
+      snapshots,
+      images,
+      weatherObservations,
+      irrigations,
+    }),
   };
 }
 
