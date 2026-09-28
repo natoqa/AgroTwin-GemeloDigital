@@ -6,6 +6,7 @@ import { BackupFormatError } from '../errors/BackupFormatError.js';
 import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, parseBackup } from '../backup/BackupDocument.js';
 import { MovableClock, decodeBase64 } from '../testing/doubles.js';
 import { createTestTwin } from '../testing/scenario.js';
+import { recordIrrigationUseCase } from './RecordIrrigation.js';
 import { recordWeatherObservationUseCase } from './RecordWeatherObservation.js';
 import type { TestTwin } from '../testing/scenario.js';
 
@@ -45,6 +46,11 @@ async function populated(): Promise<TestTwin> {
     clock,
   });
   await weather({ plotId: plot.id, rainfall: 'a_little', coldNight: true });
+  await recordIrrigationUseCase({
+    campaigns: test.campaigns,
+    irrigations: test.irrigations,
+    clock,
+  })({ campaignId: campaign.id });
 
   return test;
 }
@@ -56,6 +62,7 @@ async function stateOf(test: TestTwin) {
     observations: await test.observations.listAll(),
     snapshots: await test.snapshots.listAll(),
     weatherObservations: await test.weatherObservations.listAll(),
+    irrigations: await test.irrigations.listAll(),
   };
 }
 
@@ -81,6 +88,7 @@ describe('backup round trip', () => {
       observations: [],
       snapshots: [],
       weatherObservations: [],
+      irrigations: [],
     });
 
     const summary = await test.importBackup(backup.contents);
@@ -92,6 +100,7 @@ describe('backup round trip', () => {
       snapshots: 2,
       images: 2,
       weatherObservations: 1,
+      irrigations: 1,
     });
     expect(await stateOf(test)).toEqual(before);
 
@@ -173,11 +182,13 @@ describe('importBackupUseCase refusals', () => {
     const older = JSON.parse(backup.contents) as Record<string, unknown>;
     older['formatVersion'] = 1;
     delete older['weatherObservations'];
+    delete older['irrigations'];
 
     const summary = await test.importBackup(JSON.stringify(older));
 
     expect(summary.weatherObservations).toBe(0);
-    expect(await stateOf(test)).toEqual({ ...before, weatherObservations: [] });
+    expect(summary.irrigations).toBe(0);
+    expect(await stateOf(test)).toEqual({ ...before, weatherObservations: [], irrigations: [] });
   });
 
   it('refuses a weather answer for a plot that is not in the file', async () => {
@@ -190,6 +201,18 @@ describe('importBackupUseCase refusals', () => {
 
     await expect(test.importBackup(JSON.stringify(orphaned))).rejects.toThrow(/weather answer/u);
     expect((await stateOf(test)).plots).toEqual([]);
+  });
+
+  it('refuses an irrigation for a campaign that is not in the file', async () => {
+    const test = await populated();
+    const backup = await test.exportBackup();
+    await test.eraseAllData();
+
+    const orphaned = JSON.parse(backup.contents) as { irrigations: { campaignId: string }[] };
+    for (const irrigation of orphaned.irrigations) irrigation.campaignId = 'elsewhere';
+
+    await expect(test.importBackup(JSON.stringify(orphaned))).rejects.toThrow(/irrigation/u);
+    expect((await stateOf(test)).campaigns).toEqual([]);
   });
 
   it('refuses a file whose references do not resolve, writing nothing', async () => {
@@ -207,6 +230,7 @@ describe('importBackupUseCase refusals', () => {
       observations: [],
       snapshots: [],
       weatherObservations: [],
+      irrigations: [],
     });
   });
 });

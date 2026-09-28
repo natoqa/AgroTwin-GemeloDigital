@@ -15,6 +15,7 @@ import { updatePlotDetailsUseCase } from '../usecases/UpdatePlotDetails.js';
 import {
   InMemoryCampaigns,
   InMemoryImageStore,
+  InMemoryIrrigations,
   InMemoryObservations,
   InMemoryPlots,
   InMemorySnapshots,
@@ -48,6 +49,7 @@ export function createTestTwin(options: TestTwinOptions) {
   const snapshots = new InMemorySnapshots();
   const images = new InMemoryImageStore(clock);
   const weatherObservations = new InMemoryWeatherObservations();
+  const irrigations = new InMemoryIrrigations();
   const inference = stubInference(diagnosis);
 
   return {
@@ -57,6 +59,7 @@ export function createTestTwin(options: TestTwinOptions) {
     snapshots,
     images,
     weatherObservations,
+    irrigations,
     clock,
     ids,
     createPlot: createPlotUseCase({ plots, clock, ids }),
@@ -87,6 +90,7 @@ export function createTestTwin(options: TestTwinOptions) {
       snapshots,
       images,
       weatherObservations,
+      irrigations,
       clock,
     }),
     importBackup: importBackupUseCase({
@@ -96,6 +100,7 @@ export function createTestTwin(options: TestTwinOptions) {
       snapshots,
       images,
       weatherObservations,
+      irrigations,
     }),
     eraseAllData: eraseAllDataUseCase({
       plots,
@@ -104,6 +109,7 @@ export function createTestTwin(options: TestTwinOptions) {
       snapshots,
       images,
       weatherObservations,
+      irrigations,
     }),
   };
 }

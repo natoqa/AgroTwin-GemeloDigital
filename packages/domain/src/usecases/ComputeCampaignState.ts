@@ -7,6 +7,7 @@ import { LocalDate } from '../model/LocalDate.js';
 import type { Plot } from '../model/Plot.js';
 import type { CampaignRepositoryPort } from '../ports/CampaignRepositoryPort.js';
 import type { ClockPort } from '../ports/ClockPort.js';
+import type { IrrigationRepositoryPort } from '../ports/IrrigationRepositoryPort.js';
 import type { PlotRepositoryPort } from '../ports/PlotRepositoryPort.js';
 import type { WeatherPort } from '../ports/WeatherPort.js';
 import { runBehaviorEngine } from '../twin/BehaviorEngine.js';
@@ -16,6 +17,7 @@ export interface ComputeCampaignStateDependencies {
   readonly plots: PlotRepositoryPort;
   readonly campaigns: CampaignRepositoryPort;
   readonly weather: WeatherPort;
+  readonly irrigations: IrrigationRepositoryPort;
   readonly coefficients: Coefficients;
   readonly clock: ClockPort;
 }
@@ -66,11 +68,13 @@ export function computeCampaignStateUseCase(deps: ComputeCampaignStateDependenci
       return { campaign, plot, days: [], unavailable: 'no_weather' };
     }
 
+    const irrigations = await deps.irrigations.listByCampaign(campaign.id);
     const result = runBehaviorEngine({
       campaign,
       location: plot.location,
       coefficients: deps.coefficients,
       weather,
+      irrigatedDates: new Set(irrigations.map((irrigation) => irrigation.date.toString())),
     });
 
     if (result.unavailable.length > 0) {

@@ -9,7 +9,14 @@ import { celsius, millimeters } from '../model/Units.js';
 import type { DailyWeather } from '../model/Weather.js';
 import type { WeatherPort } from '../ports/WeatherPort.js';
 import { computeCampaignStateUseCase } from './ComputeCampaignState.js';
-import { InMemoryCampaigns, InMemoryPlots, countingIds, fixedClock } from '../testing/doubles.js';
+import {
+  InMemoryCampaigns,
+  InMemoryIrrigations,
+  InMemoryPlots,
+  countingIds,
+  fixedClock,
+} from '../testing/doubles.js';
+import { recordIrrigationUseCase } from './RecordIrrigation.js';
 import { createPlotUseCase } from './CreatePlot.js';
 import { startCampaignUseCase } from './StartCampaign.js';
 
@@ -25,6 +32,16 @@ const normalsPort: WeatherPort = {
     }
     return days;
   },
+};
+
+/** No rain at all, so the soil dries and an irrigation has something to refill. */
+const dryPort: WeatherPort = {
+  weatherFor: async (date) => ({ ...day(date), rainfall: millimeters(0) }),
+  weatherBetween: async (from, to) =>
+    (await normalsPort.weatherBetween(from, to, undefined as never)).map((entry) => ({
+      ...entry,
+      rainfall: millimeters(0),
+    })),
 };
 
 const emptyPort: WeatherPort = {
@@ -58,15 +75,19 @@ async function subject(options: { located: boolean; weather?: WeatherPort; coeff
     plantingDate: PLANTING,
   });
 
+  const irrigations = new InMemoryIrrigations();
   const execute = computeCampaignStateUseCase({
     plots,
     campaigns,
+    irrigations,
     weather: options.weather ?? normalsPort,
     coefficients: options.coefficients ?? POTATO_COEFFICIENTS,
     clock,
   });
 
-  return { execute, campaign, plot, plots, campaigns };
+  const irrigate = recordIrrigationUseCase({ campaigns, irrigations, clock });
+
+  return { execute, irrigate, campaign, plot, plots, campaigns };
 }
 
 describe('computeCampaignStateUseCase', () => {
@@ -127,6 +148,19 @@ describe('computeCampaignStateUseCase', () => {
 
     expect(state.unavailable).toBe('missing_coefficients');
     expect(state.missingCoefficients).toContain('gddBaseTemperature');
+  });
+
+  it('counts the irrigations the farmer recorded', async () => {
+    const { execute, irrigate, campaign } = await subject({ located: true, weather: dryPort });
+    const dry = await execute(campaign.id);
+    expect(dry.latest?.waterBalance.depletion).toBeGreaterThan(0);
+
+    await irrigate({ campaignId: campaign.id, date: LocalDate.of(2026, 9, 18) });
+    const watered = await execute(campaign.id);
+
+    expect(watered.latest?.waterBalance.depletion).toBeLessThan(
+      dry.latest?.waterBalance.depletion ?? 0,
+    );
   });
 
   it('refuses a campaign that does not exist', async () => {

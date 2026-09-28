@@ -10,6 +10,7 @@ import {
   CanvasImageThumbnailer,
   CryptoIdGenerator,
   DexieCampaignRepository,
+  DexieIrrigationRepository,
   DexieObservationRepository,
   DexiePlotRepository,
   DexieSnapshotRepository,
@@ -29,6 +30,7 @@ import {
   exportBackupUseCase,
   getCampaignTimelineUseCase,
   importBackupUseCase,
+  recordIrrigationUseCase,
   recordObservationUseCase,
   recordWeatherObservationUseCase,
   startCampaignUseCase,
@@ -37,6 +39,7 @@ import {
 import type {
   CampaignRepositoryPort,
   ImageStorePort,
+  IrrigationRepositoryPort,
   ObservationRepositoryPort,
   PlotRepositoryPort,
   SnapshotRepositoryPort,
@@ -65,6 +68,7 @@ export interface Container {
   readonly storage: StoragePort;
   readonly weather: WeatherPort;
   readonly weatherObservations: WeatherObservationRepositoryPort;
+  readonly irrigations: IrrigationRepositoryPort;
   readonly backupFile: BackupFileAdapter;
   readonly createPlot: ReturnType<typeof createPlotUseCase>;
   readonly updatePlotDetails: ReturnType<typeof updatePlotDetailsUseCase>;
@@ -74,6 +78,7 @@ export interface Container {
   readonly getCampaignTimeline: ReturnType<typeof getCampaignTimelineUseCase>;
   readonly computeCampaignState: ReturnType<typeof computeCampaignStateUseCase>;
   readonly recordWeatherObservation: ReturnType<typeof recordWeatherObservationUseCase>;
+  readonly recordIrrigation: ReturnType<typeof recordIrrigationUseCase>;
   readonly applyImageRetention: ReturnType<typeof applyImageRetentionUseCase>;
   readonly ensurePersistentStorage: ReturnType<typeof ensurePersistentStorageUseCase>;
   readonly exportBackup: ReturnType<typeof exportBackupUseCase>;
@@ -93,6 +98,7 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
   const images = await OpfsImageStore.open(db, ids, clock, new CanvasImageThumbnailer());
   const storage = new NavigatorStorageAdapter();
   const weatherObservations = new DexieWeatherObservationRepository(db);
+  const irrigations = new DexieIrrigationRepository(db);
 
   /*
    * The three weather sources of CLAUDE.md §9, stacked cheapest-to-best:
@@ -120,6 +126,7 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
     storage,
     weather,
     weatherObservations,
+    irrigations,
     backupFile: new BackupFileAdapter(),
     createPlot: createPlotUseCase({ plots, clock, ids }),
     updatePlotDetails: updatePlotDetailsUseCase({ plots }),
@@ -134,15 +141,17 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
       inference,
       clock,
       ids,
-      agronomy: { weather, coefficients: POTATO_COEFFICIENTS },
+      agronomy: { weather, irrigations, coefficients: POTATO_COEFFICIENTS },
     }),
     computeCampaignState: computeCampaignStateUseCase({
       plots,
       campaigns,
       weather,
+      irrigations,
       coefficients: POTATO_COEFFICIENTS,
       clock,
     }),
+    recordIrrigation: recordIrrigationUseCase({ campaigns, irrigations, clock }),
     recordWeatherObservation: recordWeatherObservationUseCase({
       plots,
       weatherObservations,
@@ -158,6 +167,7 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
       snapshots,
       images,
       weatherObservations,
+      irrigations,
       clock,
     }),
     importBackup: importBackupUseCase({
@@ -167,6 +177,7 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
       snapshots,
       images,
       weatherObservations,
+      irrigations,
     }),
     eraseAllData: eraseAllDataUseCase({
       plots,
@@ -175,6 +186,7 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
       snapshots,
       images,
       weatherObservations,
+      irrigations,
     }),
   };
 }

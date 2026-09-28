@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Coefficients } from '../agronomy/Coefficients.js';
+import { Coefficients, PROVISIONAL_CONFIDENCE_FACTOR } from '../agronomy/Coefficients.js';
 import { POTATO_COEFFICIENTS } from '../agronomy/potato.js';
 import { startCampaign } from '../model/Campaign.js';
 import type { Campaign } from '../model/Campaign.js';
@@ -9,6 +9,7 @@ import { createPlotLocation } from '../model/PlotLocation.js';
 import { epochMillis } from '../model/EpochMillis.js';
 import { celsius, millimeters } from '../model/Units.js';
 import type { DailyWeather } from '../model/Weather.js';
+import { missing, potatoCoefficientsWith, verified } from '../testing/coefficients.js';
 import { runBehaviorEngine } from './BehaviorEngine.js';
 
 /**
@@ -115,7 +116,8 @@ describe('runBehaviorEngine', () => {
     expect(result.latest?.waterBalance.underStress).toBe(false);
   });
 
-  it('counts irrigation the farmer reported', () => {
+  it('counts a reported irrigation as bringing the root zone back to field capacity', () => {
+    const irrigationDay = PLANTING.plusDays(20);
     const dry = runBehaviorEngine({
       campaign,
       location: LOCATION,
@@ -127,12 +129,79 @@ describe('runBehaviorEngine', () => {
       location: LOCATION,
       coefficients: POTATO_COEFFICIENTS,
       weather: season(30),
-      irrigationByDate: new Map([[PLANTING.plusDays(10).toString(), millimeters(40)]]),
+      irrigatedDates: new Set([irrigationDay.toString()]),
     });
 
+    const day = irrigated.days[20];
+    // With a refill fraction of 1 the soil starts the day full, so all that is
+    // missing by nightfall is what the crop drank that same day.
+    expect(day?.waterBalance.depletion).toBeCloseTo(day?.waterBalance.actualEt ?? -1, 9);
     expect(irrigated.latest?.waterBalance.depletion).toBeLessThan(
       dry.latest?.waterBalance.depletion ?? 0,
     );
+    // Before the irrigation, nothing differs.
+    expect(irrigated.days[19]).toEqual(dry.days[19]);
+  });
+
+  it('makes up only the configured share of the shortfall', () => {
+    const half = potatoCoefficientsWith({ irrigationRefillFraction: verified(0.5, 'fraction') });
+    const before = runBehaviorEngine({
+      campaign,
+      location: LOCATION,
+      coefficients: half,
+      weather: season(21),
+    }).days[19];
+    const result = runBehaviorEngine({
+      campaign,
+      location: LOCATION,
+      coefficients: half,
+      weather: season(21),
+      irrigatedDates: new Set([PLANTING.plusDays(20).toString()]),
+    });
+
+    const carried = before?.waterBalance.depletion ?? 0;
+    const today = result.days[20];
+    expect(today?.waterBalance.depletion).toBeCloseTo(
+      carried / 2 + (today?.waterBalance.actualEt ?? 0),
+      9,
+    );
+  });
+
+  it('costs confidence from the first irrigation on, because the refill is provisional', () => {
+    const irrigated = runBehaviorEngine({
+      campaign,
+      location: LOCATION,
+      coefficients: POTATO_COEFFICIENTS,
+      weather: season(30),
+      irrigatedDates: new Set([PLANTING.plusDays(20).toString()]),
+    });
+
+    const before = irrigated.days[19]?.confidence ?? 0;
+    const after = irrigated.days[20]?.confidence ?? 1;
+    expect(after).toBeCloseTo(before * PROVISIONAL_CONFIDENCE_FACTOR, 12);
+    expect(irrigated.latest?.confidence).toBeCloseTo(after, 12);
+  });
+
+  it('needs the refill coefficient only when somebody actually watered', () => {
+    const unknownRefill = potatoCoefficientsWith({ irrigationRefillFraction: missing('fraction') });
+
+    const unwatered = runBehaviorEngine({
+      campaign,
+      location: LOCATION,
+      coefficients: unknownRefill,
+      weather: season(10),
+    });
+    const watered = runBehaviorEngine({
+      campaign,
+      location: LOCATION,
+      coefficients: unknownRefill,
+      weather: season(10),
+      irrigatedDates: new Set([PLANTING.plusDays(5).toString()]),
+    });
+
+    expect(unwatered.days).toHaveLength(10);
+    expect(watered.days).toEqual([]);
+    expect(watered.unavailable).toEqual(['irrigationRefillFraction']);
   });
 
   it('judges blight only on days whose leaf wetness was measured', () => {

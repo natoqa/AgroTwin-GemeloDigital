@@ -52,6 +52,7 @@ const minimal: BackupDocument = {
   weatherObservations: [
     { plotId: 'p1', date: '2026-09-01', rainfall: 'none', coldNight: false, recordedAt: 3_000 },
   ],
+  irrigations: [{ campaignId: 'c1', plotId: 'p1', date: '2026-09-02', recordedAt: 4_000 }],
 };
 
 const onlyCampaign = minimal.campaigns[0]!;
@@ -155,6 +156,7 @@ describe('parseBackup refusals', () => {
       'snapshots',
       'images',
       'weatherObservations',
+      'irrigations',
     ]) {
       expect(() => parseBackup(withText((document) => (document[key] = {})))).toThrow(
         new RegExp(`${key} is not a list`, 'u'),
@@ -276,13 +278,25 @@ describe('parseBackup refusals', () => {
     expect(() => parseBackup(text)).toThrow(/does not know/u);
   });
 
-  it('reads a version 1 file as holding no weather answers', () => {
+  it('reads a version 1 file as holding no weather answers and no irrigations', () => {
     const text = withText((d) => {
       d['formatVersion'] = 1;
       delete d['weatherObservations'];
+      delete d['irrigations'];
     });
 
-    expect(parseBackup(text).weatherObservations).toEqual([]);
+    const parsed = parseBackup(text);
+    expect(parsed.weatherObservations).toEqual([]);
+    expect(parsed.irrigations).toEqual([]);
+  });
+
+  it('names the field when an irrigation is malformed', () => {
+    expect(() => parseBackup(withText((d) => (first(d, 'irrigations')['date'] = 20260902)))).toThrow(
+      /irrigations\[0\]\.date is not text/u,
+    );
+    expect(() =>
+      parseBackup(withText((d) => (first(d, 'irrigations')['recordedAt'] = 'x'))),
+    ).toThrow(/irrigations\[0\]\.recordedAt is not a number/u);
   });
 
   it('names the field when a weather answer is malformed', () => {

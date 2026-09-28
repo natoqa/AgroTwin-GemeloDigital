@@ -7,6 +7,7 @@ import { LocalDate } from '../model/LocalDate.js';
 import { createObservation } from '../model/Observation.js';
 import type { Observation } from '../model/Observation.js';
 import { createPlot } from '../model/Plot.js';
+import type { Irrigation } from '../model/Irrigation.js';
 import type { Plot } from '../model/Plot.js';
 import { CROP } from '../model/Campaign.js';
 import type { Campaign } from '../model/Campaign.js';
@@ -35,9 +36,9 @@ export const BACKUP_FORMAT_VERSION = 2;
 /**
  * Every version this app can still restore.
  *
- * Version 1 (Phase 2) predates the farmer's weather answers. A version 1 file
- * is still a complete record of what that app knew, so it restores as-is, with
- * no weather answers — which is exactly what it held.
+ * Version 1 (Phase 2) predates the farmer's weather answers and irrigations. A
+ * version 1 file is still a complete record of what that app knew, so it
+ * restores as-is, with neither — which is exactly what it held.
  */
 export const READABLE_BACKUP_FORMAT_VERSIONS: readonly number[] = [1, 2];
 
@@ -52,6 +53,8 @@ export interface BackupDocument {
   readonly images: readonly EncodedImageDto[];
   /** Since version 2. What the farmer said the weather did, per plot and day. */
   readonly weatherObservations: readonly WeatherObservationDto[];
+  /** Since version 2. The days the farmer watered, per campaign. */
+  readonly irrigations: readonly IrrigationDto[];
 }
 
 export interface PlotLocationDto {
@@ -115,6 +118,13 @@ export interface WeatherObservationDto {
   /** Checked while parsing, so a mapped DTO never needs checking again. */
   readonly rainfall: RainfallAnswer;
   readonly coldNight: boolean;
+  readonly recordedAt: number;
+}
+
+export interface IrrigationDto {
+  readonly campaignId: string;
+  readonly plotId: string;
+  readonly date: string;
   readonly recordedAt: number;
 }
 
@@ -203,6 +213,13 @@ export const toWeatherObservationDto = (
   recordedAt: observation.recordedAt,
 });
 
+export const toIrrigationDto = (irrigation: Irrigation): IrrigationDto => ({
+  campaignId: irrigation.campaignId,
+  plotId: irrigation.plotId,
+  date: irrigation.date.toString(),
+  recordedAt: irrigation.recordedAt,
+});
+
 /** The file as text. Pretty-printed so a human can inspect what they hold. */
 export const serializeBackup = (backup: BackupDocument): string =>
   JSON.stringify(backup, undefined, 2);
@@ -277,6 +294,13 @@ export const toWeatherObservation = (dto: WeatherObservationDto): WeatherObserva
   recordedAt: epochMillis(dto.recordedAt),
 });
 
+export const toIrrigation = (dto: IrrigationDto): Irrigation => ({
+  campaignId: campaignId(dto.campaignId),
+  plotId: plotId(dto.plotId),
+  date: LocalDate.parse(dto.date),
+  recordedAt: epochMillis(dto.recordedAt),
+});
+
 // --- Parsing ------------------------------------------------------------
 
 /**
@@ -321,6 +345,8 @@ export function parseBackup(text: string): BackupDocument {
         : asArray(root['weatherObservations'], 'weatherObservations').map(
             parseWeatherObservation,
           ),
+    irrigations:
+      formatVersion === 1 ? [] : asArray(root['irrigations'], 'irrigations').map(parseIrrigation),
   };
 }
 
@@ -460,6 +486,17 @@ function parseWeatherObservation(value: unknown, index: number): WeatherObservat
     date: asString(record['date'], `${path}.date`),
     rainfall,
     coldNight: asBoolean(record['coldNight'], `${path}.coldNight`),
+    recordedAt: asNumber(record['recordedAt'], `${path}.recordedAt`),
+  };
+}
+
+function parseIrrigation(value: unknown, index: number): IrrigationDto {
+  const path = `irrigations[${index}]`;
+  const record = asRecord(value, path);
+  return {
+    campaignId: asString(record['campaignId'], `${path}.campaignId`),
+    plotId: asString(record['plotId'], `${path}.plotId`),
+    date: asString(record['date'], `${path}.date`),
     recordedAt: asNumber(record['recordedAt'], `${path}.recordedAt`),
   };
 }

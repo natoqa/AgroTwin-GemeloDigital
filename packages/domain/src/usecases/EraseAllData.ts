@@ -1,5 +1,6 @@
 import type { CampaignRepositoryPort } from '../ports/CampaignRepositoryPort.js';
 import type { ImageStorePort } from '../ports/ImageStorePort.js';
+import type { IrrigationRepositoryPort } from '../ports/IrrigationRepositoryPort.js';
 import type { ObservationRepositoryPort } from '../ports/ObservationRepositoryPort.js';
 import type { PlotRepositoryPort } from '../ports/PlotRepositoryPort.js';
 import type { SnapshotRepositoryPort } from '../ports/SnapshotRepositoryPort.js';
@@ -12,6 +13,7 @@ export interface EraseAllDataDependencies {
   readonly snapshots: SnapshotRepositoryPort;
   readonly images: ImageStorePort;
   readonly weatherObservations: WeatherObservationRepositoryPort;
+  readonly irrigations: IrrigationRepositoryPort;
 }
 
 /**
@@ -28,6 +30,7 @@ export function eraseAllDataUseCase(deps: EraseAllDataDependencies) {
     // as much theirs as a photograph, and "erase all" left it behind until
     // Phase 4.
     await deps.weatherObservations.deleteAll();
+    await deps.irrigations.deleteAll();
     await deps.snapshots.deleteAll();
     await deps.observations.deleteAll();
     await deps.campaigns.deleteAll();

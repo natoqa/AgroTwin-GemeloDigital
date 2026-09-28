@@ -1,5 +1,6 @@
 export { AgroTwinDb } from './persistence/AgroTwinDb.js';
 export { DexieCampaignRepository } from './persistence/DexieCampaignRepository.js';
+export { DexieIrrigationRepository } from './persistence/DexieIrrigationRepository.js';
 export { DexieObservationRepository } from './persistence/DexieObservationRepository.js';
 export { DexiePlotRepository } from './persistence/DexiePlotRepository.js';
 export { DexieSnapshotRepository } from './persistence/DexieSnapshotRepository.js';

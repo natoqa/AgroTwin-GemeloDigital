@@ -9,6 +9,7 @@ export type {
   StoredImagePair,
 } from './ImageStorePort.js';
 export type { InferencePort } from './InferencePort.js';
+export type { IrrigationRepositoryPort } from './IrrigationRepositoryPort.js';
 export type { ObservationRepositoryPort } from './ObservationRepositoryPort.js';
 export type { PlotRepositoryPort } from './PlotRepositoryPort.js';
 export type { SnapshotRepositoryPort } from './SnapshotRepositoryPort.js';

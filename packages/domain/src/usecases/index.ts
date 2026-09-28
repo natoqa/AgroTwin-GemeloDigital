@@ -27,6 +27,8 @@ export type {
 } from './GetCampaignTimeline.js';
 export { importBackupUseCase } from './ImportBackup.js';
 export type { ImportBackupDependencies, ImportBackupSummary } from './ImportBackup.js';
+export { recordIrrigationUseCase } from './RecordIrrigation.js';
+export type { RecordIrrigationDependencies, RecordIrrigationInput } from './RecordIrrigation.js';
 export { recordObservationUseCase } from './RecordObservation.js';
 export type {
   RecordObservationDependencies,

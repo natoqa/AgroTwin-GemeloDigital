@@ -2,6 +2,7 @@ import {
   parseBackup,
   toCampaign,
   toEncodedImage,
+  toIrrigation,
   toObservation,
   toPlot,
   toSnapshot,
@@ -11,6 +12,7 @@ import type { BackupDocument } from '../backup/BackupDocument.js';
 import { BackupFormatError } from '../errors/BackupFormatError.js';
 import type { CampaignRepositoryPort } from '../ports/CampaignRepositoryPort.js';
 import type { ImageStorePort } from '../ports/ImageStorePort.js';
+import type { IrrigationRepositoryPort } from '../ports/IrrigationRepositoryPort.js';
 import type { ObservationRepositoryPort } from '../ports/ObservationRepositoryPort.js';
 import type { PlotRepositoryPort } from '../ports/PlotRepositoryPort.js';
 import type { SnapshotRepositoryPort } from '../ports/SnapshotRepositoryPort.js';
@@ -23,6 +25,7 @@ export interface ImportBackupDependencies {
   readonly snapshots: SnapshotRepositoryPort;
   readonly images: ImageStorePort;
   readonly weatherObservations: WeatherObservationRepositoryPort;
+  readonly irrigations: IrrigationRepositoryPort;
 }
 
 export interface ImportBackupSummary {
@@ -32,6 +35,7 @@ export interface ImportBackupSummary {
   readonly snapshots: number;
   readonly images: number;
   readonly weatherObservations: number;
+  readonly irrigations: number;
 }
 
 /**
@@ -68,6 +72,9 @@ export function importBackupUseCase(deps: ImportBackupDependencies) {
     for (const dto of backup.weatherObservations) {
       await deps.weatherObservations.save(toWeatherObservation(dto));
     }
+    for (const dto of backup.irrigations) {
+      await deps.irrigations.save(toIrrigation(dto));
+    }
 
     return {
       plots: backup.plots.length,
@@ -76,6 +83,7 @@ export function importBackupUseCase(deps: ImportBackupDependencies) {
       snapshots: backup.snapshots.length,
       images: backup.images.length,
       weatherObservations: backup.weatherObservations.length,
+      irrigations: backup.irrigations.length,
     };
   };
 }
@@ -101,6 +109,13 @@ function assertReferencesResolve(backup: BackupDocument): void {
     if (!plotIds.has(answer.plotId)) {
       throw new BackupFormatError(
         `a weather answer for ${answer.date} belongs to a plot that is not in the file`,
+      );
+    }
+  }
+  for (const irrigation of backup.irrigations) {
+    if (!campaignIds.has(irrigation.campaignId)) {
+      throw new BackupFormatError(
+        `an irrigation on ${irrigation.date} belongs to a campaign that is not in the file`,
       );
     }
   }

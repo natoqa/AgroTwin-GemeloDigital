@@ -3,6 +3,7 @@ import type { EntityTable } from 'dexie';
 import type {
   CampaignRecord,
   ImageRecord,
+  IrrigationRecord,
   ObservationRecord,
   PlotRecord,
   SnapshotRecord,
@@ -31,6 +32,7 @@ export class AgroTwinDb extends Dexie {
   declare snapshots: EntityTable<SnapshotRecord, 'id'>;
   declare images: EntityTable<ImageRecord, 'id'>;
   declare weatherObservations: EntityTable<WeatherObservationRecord, 'id'>;
+  declare irrigations: EntityTable<IrrigationRecord, 'id'>;
 
   constructor(name = 'agrotwin') {
     super(name);
@@ -66,6 +68,18 @@ export class AgroTwinDb extends Dexie {
       // Keyed by plot and day, so answering twice about the same day replaces
       // the earlier answer instead of stacking up contradictions.
       weatherObservations: 'id, plotId, date, [plotId+date]',
+    });
+
+    // Version 4 (Phase 4) adds irrigations, again with nothing to migrate.
+    this.version(4).stores({
+      plots: 'id, createdAt',
+      campaigns: 'id, plotId, status, [plotId+status]',
+      observations: 'id, campaignId, imageRef, at, [campaignId+at]',
+      snapshots: 'id, plotId, campaignId, at, [plotId+at], [campaignId+at]',
+      images: 'id, kind, storedAt, [kind+storedAt]',
+      weatherObservations: 'id, plotId, date, [plotId+date]',
+      // Keyed by campaign and day: watering twice in one day is one event.
+      irrigations: 'id, campaignId, [campaignId+date]',
     });
   }
 }

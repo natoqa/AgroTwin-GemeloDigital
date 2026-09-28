@@ -9,6 +9,7 @@ import type { Plot } from '../model/Plot.js';
 import type { TwinSnapshot } from '../model/TwinSnapshot.js';
 import type { LocalDate } from '../model/LocalDate.js';
 import type { WeatherObservation } from '../model/WeatherObservation.js';
+import type { Irrigation } from '../model/Irrigation.js';
 import type { CampaignRepositoryPort } from '../ports/CampaignRepositoryPort.js';
 import type { ClockPort } from '../ports/ClockPort.js';
 import type { IdGeneratorPort } from '../ports/IdGeneratorPort.js';
@@ -19,6 +20,7 @@ import type {
   StoredImagePair,
 } from '../ports/ImageStorePort.js';
 import type { InferencePort } from '../ports/InferencePort.js';
+import type { IrrigationRepositoryPort } from '../ports/IrrigationRepositoryPort.js';
 import type { ObservationRepositoryPort } from '../ports/ObservationRepositoryPort.js';
 import type { PlotRepositoryPort } from '../ports/PlotRepositoryPort.js';
 import type { SnapshotRepositoryPort } from '../ports/SnapshotRepositoryPort.js';
@@ -140,6 +142,25 @@ export class InMemoryWeatherObservations implements WeatherObservationRepository
       .sort((left, right) => left.date.toEpochDay() - right.date.toEpochDay());
   }
   async listAll(): Promise<readonly WeatherObservation[]> {
+    return [...this.items.values()];
+  }
+  async deleteAll(): Promise<void> {
+    this.items.clear();
+  }
+}
+
+export class InMemoryIrrigations implements IrrigationRepositoryPort {
+  readonly items = new Map<string, Irrigation>();
+
+  async save(irrigation: Irrigation): Promise<void> {
+    this.items.set(`${irrigation.campaignId}|${irrigation.date.toString()}`, irrigation);
+  }
+  async listByCampaign(campaignId: CampaignId): Promise<readonly Irrigation[]> {
+    return [...this.items.values()]
+      .filter((irrigation) => irrigation.campaignId === campaignId)
+      .sort((left, right) => left.date.toEpochDay() - right.date.toEpochDay());
+  }
+  async listAll(): Promise<readonly Irrigation[]> {
     return [...this.items.values()];
   }
   async deleteAll(): Promise<void> {

@@ -37,6 +37,8 @@ export type {
   Crop,
   StartCampaignProps,
 } from './Campaign.js';
+export { recordIrrigation } from './Irrigation.js';
+export type { Irrigation, RecordIrrigationProps } from './Irrigation.js';
 export { createObservation, hasOriginalImage, withOriginalPurged } from './Observation.js';
 export type { CreateObservationProps, Observation } from './Observation.js';
 export { DIAGNOSIS_CLASSES, isDiagnosisClass } from './Diagnosis.js';

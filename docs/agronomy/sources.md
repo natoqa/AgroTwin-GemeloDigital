@@ -188,6 +188,7 @@ Nueve entradas. Ninguna tiene fuente verificada y todas reducen la confianza.
 | `rainfallFactorLittle` | 0.5 | Decisión de modelado | Multiplica la lluvia de las normales cuando el agricultor dice «llovió poco». Sin respaldo publicado |
 | `rainfallFactorHeavy` | 2.0 | Decisión de modelado | Ídem para «llovió mucho» |
 | `coldNightTemperatureDrop` | 3 °C | Decisión de modelado | Cuánto baja la mínima cuando el agricultor reporta noche fría. Sin respaldo publicado |
+| `irrigationRefillFraction` | 1.0 | Decisión de modelado (Fase 4) | El agricultor dice **que** regó, no cuánto. Cada riego repone esta fracción del agotamiento del día anterior; 1 = el suelo vuelve a capacidad de campo. Hace falta saber si el riego por surco en la sierra realmente llena la zona radicular. Solo cuesta confianza en campañas donde se registró algún riego |
 | `stageLengthInitial` | 25 d | FAO-56 Tabla 11, papa, clima continental, siembra de mayo (25/30/45/30, total 130 d) | FAO-56 **no publica** una fila para los Andes peruanos. Hace falta la duración de etapas para la sierra de La Libertad |
 | `stageLengthDevelopment` | 30 d | ídem | ídem |
 | `stageLengthMid` | 45 d | ídem | ídem |

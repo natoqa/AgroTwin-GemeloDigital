@@ -8,6 +8,7 @@ export { InvalidCampaignDatesError } from './InvalidCampaignDatesError.js';
 export { InvalidCoefficientsError } from './InvalidCoefficientsError.js';
 export { InvalidCoordinatesError } from './InvalidCoordinatesError.js';
 export { InvalidEpochMillisError } from './InvalidEpochMillisError.js';
+export { InvalidIrrigationDateError } from './InvalidIrrigationDateError.js';
 export { InvalidLocalDateError } from './InvalidLocalDateError.js';
 export { InvalidObservationNoteError } from './InvalidObservationNoteError.js';
 export { InvalidPlotNameError } from './InvalidPlotNameError.js';
