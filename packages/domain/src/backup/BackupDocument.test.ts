@@ -49,6 +49,9 @@ const minimal: BackupDocument = {
     },
   ],
   images: [],
+  weatherObservations: [
+    { plotId: 'p1', date: '2026-09-01', rainfall: 'none', coldNight: false, recordedAt: 3_000 },
+  ],
 };
 
 const onlyCampaign = minimal.campaigns[0]!;
@@ -127,8 +130,8 @@ describe('parseBackup refusals', () => {
   });
 
   it('refuses a format version it cannot read', () => {
-    expect(() => parseBackup(withText((document) => (document['formatVersion'] = 2)))).toThrow(
-      /format version 2/u,
+    expect(() => parseBackup(withText((document) => (document['formatVersion'] = 3)))).toThrow(
+      /format version 3/u,
     );
   });
 
@@ -145,7 +148,14 @@ describe('parseBackup refusals', () => {
   });
 
   it('refuses a top-level collection that is not a list', () => {
-    for (const key of ['plots', 'campaigns', 'observations', 'snapshots', 'images']) {
+    for (const key of [
+      'plots',
+      'campaigns',
+      'observations',
+      'snapshots',
+      'images',
+      'weatherObservations',
+    ]) {
       expect(() => parseBackup(withText((document) => (document[key] = {})))).toThrow(
         new RegExp(`${key} is not a list`, 'u'),
       );
@@ -264,5 +274,26 @@ describe('parseBackup refusals', () => {
     });
 
     expect(() => parseBackup(text)).toThrow(/does not know/u);
+  });
+
+  it('reads a version 1 file as holding no weather answers', () => {
+    const text = withText((d) => {
+      d['formatVersion'] = 1;
+      delete d['weatherObservations'];
+    });
+
+    expect(parseBackup(text).weatherObservations).toEqual([]);
+  });
+
+  it('names the field when a weather answer is malformed', () => {
+    expect(() =>
+      parseBackup(withText((d) => (first(d, 'weatherObservations')['coldNight'] = 'yes'))),
+    ).toThrow(/weatherObservations\[0\]\.coldNight is not true or false/u);
+    expect(() =>
+      parseBackup(withText((d) => (first(d, 'weatherObservations')['rainfall'] = 'drizzle'))),
+    ).toThrow(/weatherObservations\[0\]\.rainfall names an answer/u);
+    expect(() =>
+      parseBackup(withText((d) => (first(d, 'weatherObservations')['recordedAt'] = 'x'))),
+    ).toThrow(/recordedAt is not a number/u);
   });
 });

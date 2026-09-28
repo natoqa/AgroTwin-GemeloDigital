@@ -3,6 +3,7 @@ import type { ImageStorePort } from '../ports/ImageStorePort.js';
 import type { ObservationRepositoryPort } from '../ports/ObservationRepositoryPort.js';
 import type { PlotRepositoryPort } from '../ports/PlotRepositoryPort.js';
 import type { SnapshotRepositoryPort } from '../ports/SnapshotRepositoryPort.js';
+import type { WeatherObservationRepositoryPort } from '../ports/WeatherObservationRepositoryPort.js';
 
 export interface EraseAllDataDependencies {
   readonly plots: PlotRepositoryPort;
@@ -10,6 +11,7 @@ export interface EraseAllDataDependencies {
   readonly observations: ObservationRepositoryPort;
   readonly snapshots: SnapshotRepositoryPort;
   readonly images: ImageStorePort;
+  readonly weatherObservations: WeatherObservationRepositoryPort;
 }
 
 /**
@@ -22,6 +24,10 @@ export interface EraseAllDataDependencies {
  */
 export function eraseAllDataUseCase(deps: EraseAllDataDependencies) {
   return async function execute(): Promise<void> {
+    // Everything, including what the farmer only *said*: a weather answer is
+    // as much theirs as a photograph, and "erase all" left it behind until
+    // Phase 4.
+    await deps.weatherObservations.deleteAll();
     await deps.snapshots.deleteAll();
     await deps.observations.deleteAll();
     await deps.campaigns.deleteAll();

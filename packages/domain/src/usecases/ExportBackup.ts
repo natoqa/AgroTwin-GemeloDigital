@@ -7,6 +7,7 @@ import {
   toObservationDto,
   toPlotDto,
   toSnapshotDto,
+  toWeatherObservationDto,
 } from '../backup/BackupDocument.js';
 import type { BackupDocument, EncodedImageDto } from '../backup/BackupDocument.js';
 import { LocalDate } from '../model/LocalDate.js';
@@ -16,6 +17,7 @@ import type { ImageStorePort } from '../ports/ImageStorePort.js';
 import type { ObservationRepositoryPort } from '../ports/ObservationRepositoryPort.js';
 import type { PlotRepositoryPort } from '../ports/PlotRepositoryPort.js';
 import type { SnapshotRepositoryPort } from '../ports/SnapshotRepositoryPort.js';
+import type { WeatherObservationRepositoryPort } from '../ports/WeatherObservationRepositoryPort.js';
 
 export interface ExportBackupDependencies {
   readonly plots: PlotRepositoryPort;
@@ -23,6 +25,7 @@ export interface ExportBackupDependencies {
   readonly observations: ObservationRepositoryPort;
   readonly snapshots: SnapshotRepositoryPort;
   readonly images: ImageStorePort;
+  readonly weatherObservations: WeatherObservationRepositoryPort;
   readonly clock: ClockPort;
 }
 
@@ -46,11 +49,12 @@ export interface ExportBackupResult {
  */
 export function exportBackupUseCase(deps: ExportBackupDependencies) {
   return async function execute(): Promise<ExportBackupResult> {
-    const [plots, campaigns, observations, snapshots] = await Promise.all([
+    const [plots, campaigns, observations, snapshots, weatherObservations] = await Promise.all([
       deps.plots.listAll(),
       deps.campaigns.listAll(),
       deps.observations.listAll(),
       deps.snapshots.listAll(),
+      deps.weatherObservations.listAll(),
     ]);
 
     const images: EncodedImageDto[] = [];
@@ -72,6 +76,7 @@ export function exportBackupUseCase(deps: ExportBackupDependencies) {
       observations: observations.map(toObservationDto),
       snapshots: snapshots.map(toSnapshotDto),
       images,
+      weatherObservations: weatherObservations.map(toWeatherObservationDto),
     };
 
     return {

@@ -151,8 +151,30 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
     getCampaignTimeline: getCampaignTimelineUseCase({ plots, campaigns, observations, snapshots }),
     applyImageRetention: applyImageRetentionUseCase({ images, observations, clock }),
     ensurePersistentStorage: ensurePersistentStorageUseCase({ storage }),
-    exportBackup: exportBackupUseCase({ plots, campaigns, observations, snapshots, images, clock }),
-    importBackup: importBackupUseCase({ plots, campaigns, observations, snapshots, images }),
-    eraseAllData: eraseAllDataUseCase({ plots, campaigns, observations, snapshots, images }),
+    exportBackup: exportBackupUseCase({
+      plots,
+      campaigns,
+      observations,
+      snapshots,
+      images,
+      weatherObservations,
+      clock,
+    }),
+    importBackup: importBackupUseCase({
+      plots,
+      campaigns,
+      observations,
+      snapshots,
+      images,
+      weatherObservations,
+    }),
+    eraseAllData: eraseAllDataUseCase({
+      plots,
+      campaigns,
+      observations,
+      snapshots,
+      images,
+      weatherObservations,
+    }),
   };
 }

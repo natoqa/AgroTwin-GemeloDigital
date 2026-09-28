@@ -3,37 +3,16 @@ import { PlotNotFoundError } from '../errors/PlotNotFoundError.js';
 import { epochMillis } from '../model/EpochMillis.js';
 import { plotId } from '../model/Ids.js';
 import { LocalDate } from '../model/LocalDate.js';
-import type { WeatherObservation } from '../model/WeatherObservation.js';
-import type { WeatherObservationRepositoryPort } from '../ports/WeatherObservationRepositoryPort.js';
-import { InMemoryPlots, countingIds, fixedClock } from '../testing/doubles.js';
+import {
+  InMemoryPlots,
+  InMemoryWeatherObservations,
+  countingIds,
+  fixedClock,
+} from '../testing/doubles.js';
 import { createPlotUseCase } from './CreatePlot.js';
 import { recordWeatherObservationUseCase } from './RecordWeatherObservation.js';
 
 const NOW = epochMillis(LocalDate.of(2026, 9, 20).toEpochDay() * 86_400_000 + 12 * 3_600_000);
-
-class InMemoryWeatherObservations implements WeatherObservationRepositoryPort {
-  readonly items = new Map<string, WeatherObservation>();
-
-  private key(plot: string, date: string): string {
-    return `${plot}|${date}`;
-  }
-
-  async save(observation: WeatherObservation): Promise<void> {
-    this.items.set(this.key(observation.plotId, observation.date.toString()), observation);
-  }
-  async findByDate(plot: string, date: LocalDate): Promise<WeatherObservation | undefined> {
-    return this.items.get(this.key(plot, date.toString()));
-  }
-  async listBetween(): Promise<readonly WeatherObservation[]> {
-    return [...this.items.values()];
-  }
-  async listAll(): Promise<readonly WeatherObservation[]> {
-    return [...this.items.values()];
-  }
-  async deleteAll(): Promise<void> {
-    this.items.clear();
-  }
-}
 
 async function subject() {
   const plots = new InMemoryPlots();

@@ -18,6 +18,7 @@ import {
   InMemoryObservations,
   InMemoryPlots,
   InMemorySnapshots,
+  InMemoryWeatherObservations,
   countingIds,
   stubInference,
 } from './doubles.js';
@@ -46,6 +47,7 @@ export function createTestTwin(options: TestTwinOptions) {
   const observations = new InMemoryObservations();
   const snapshots = new InMemorySnapshots();
   const images = new InMemoryImageStore(clock);
+  const weatherObservations = new InMemoryWeatherObservations();
   const inference = stubInference(diagnosis);
 
   return {
@@ -54,6 +56,7 @@ export function createTestTwin(options: TestTwinOptions) {
     observations,
     snapshots,
     images,
+    weatherObservations,
     clock,
     ids,
     createPlot: createPlotUseCase({ plots, clock, ids }),
@@ -83,10 +86,25 @@ export function createTestTwin(options: TestTwinOptions) {
       observations,
       snapshots,
       images,
+      weatherObservations,
       clock,
     }),
-    importBackup: importBackupUseCase({ plots, campaigns, observations, snapshots, images }),
-    eraseAllData: eraseAllDataUseCase({ plots, campaigns, observations, snapshots, images }),
+    importBackup: importBackupUseCase({
+      plots,
+      campaigns,
+      observations,
+      snapshots,
+      images,
+      weatherObservations,
+    }),
+    eraseAllData: eraseAllDataUseCase({
+      plots,
+      campaigns,
+      observations,
+      snapshots,
+      images,
+      weatherObservations,
+    }),
   };
 }
 
