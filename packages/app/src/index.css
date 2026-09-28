@@ -1,29 +1,72 @@
 @import 'tailwindcss';
 
 /*
- * Phase 1 is deliberately unstyled: the slice has to work before it can look
- * like anything. The design system — large targets, high contrast, icons over
- * text, readable in direct sun — is a Phase 4 deliverable.
+ * The design system's tokens (Phase 4).
  *
- * Only two things are set here, because they are accessibility floors rather
- * than decoration: a minimum touch target of 48px (CLAUDE.md section 3) and a
- * base font that does not shrink on a small screen.
+ * One light theme on purpose. The screen is read outdoors, often in direct
+ * sun, where a dark theme loses: glare swamps dark backgrounds and thin light
+ * text disappears. Every text colour below holds at least 7:1 against the
+ * surface it sits on (WCAG AAA for body text), and every border that marks a
+ * control holds at least 3:1.
+ *
+ * Urgency has a colour, but never *only* a colour: each level also has an
+ * icon and a word, because a phone at full sun washes hues out and some
+ * farmers do not tell red from green.
  */
 @theme {
-  --color-agrotwin: #1d6f2f;
+  --color-ink: #16180f;
+  --color-muted: #3d4136;
+  --color-canvas: #f3f4ee;
+  --color-paper: #ffffff;
+  --color-line: #6b6f63;
+
+  --color-brand: #165c27;
+  --color-brand-strong: #0f4520;
+  --color-brand-soft: #e3f1e5;
+
+  --color-now: #8f1d16;
+  --color-now-soft: #fdecea;
+  --color-soon: #7a4300;
+  --color-soon-soft: #fff0d4;
+  --color-info: #0b4a8f;
+  --color-info-soft: #e6eef9;
+
+  --font-sans: system-ui, 'Roboto', 'Segoe UI', sans-serif;
 }
 
-button,
-input[type='file'],
-input[type='text'] {
-  min-height: 48px;
+html {
+  /* 18px: the smallest size that stays readable at arm's length in daylight. */
+  font-size: 112.5%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  line-height: 1.5;
 }
 
 /*
- * Two adjacent buttons with no gap read as one target, which is a usability
- * bug even in an unstyled phase: a mis-tap on a 48px target is a wrong action,
- * not a cosmetic complaint.
+ * The touch floor of CLAUDE.md §3, applied to every control whether or not a
+ * component remembered it.
  */
-button + button {
-  margin-left: 12px;
+button,
+input,
+select {
+  min-height: 48px;
+}
+
+/* A thick, high-contrast focus ring: visible in sun and for keyboard users. */
+:focus-visible {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
 }

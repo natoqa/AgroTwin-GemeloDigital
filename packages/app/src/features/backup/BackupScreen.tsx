@@ -2,6 +2,12 @@ import { useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { DomainError } from '@agrotwin/domain';
 import { useContainer } from '../../composition/ContainerContext';
+import { es } from '../../i18n/es';
+import { Button } from '../../ui/Button';
+import { Banner } from '../../ui/Card';
+import { Field } from '../../ui/Field';
+import { Icon } from '../../ui/Icon';
+import { Screen, Section } from '../../ui/Screen';
 
 /**
  * Export, restore and erase.
@@ -27,9 +33,9 @@ export function BackupScreen({ onChanged, onBack }: { onChanged: () => void; onB
     try {
       const backup = await exportBackup();
       backupFile.download(backup.contents, `agrotwin-${backup.createdOn.toString()}.json`);
-      setMessage('Copia guardada en tus descargas.');
+      setMessage(es.backup.saved);
     } catch {
-      setError('No se pudo guardar la copia.');
+      setError(es.backup.saveFailed);
     } finally {
       setBusy(false);
     }
@@ -44,16 +50,10 @@ export function BackupScreen({ onChanged, onBack }: { onChanged: () => void; onB
     setMessage(undefined);
     try {
       const summary = await importBackup(await backupFile.read(file));
-      setMessage(
-        `Copia restaurada: ${summary.plots} parcelas, ${summary.campaigns} campañas y ${summary.observations} observaciones.`,
-      );
+      setMessage(es.backup.restored(summary.plots, summary.campaigns, summary.observations));
       onChanged();
     } catch (cause) {
-      setError(
-        cause instanceof DomainError
-          ? 'Ese archivo no es una copia que esta aplicación pueda leer.'
-          : 'No se pudo restaurar la copia.',
-      );
+      setError(cause instanceof DomainError ? es.backup.notABackup : es.backup.restoreFailed);
     } finally {
       // Lets the farmer pick the same file again after a failure.
       event.target.value = '';
@@ -68,73 +68,90 @@ export function BackupScreen({ onChanged, onBack }: { onChanged: () => void; onB
     try {
       await eraseAllData();
       setEraseConfirmation('');
-      setMessage('Se borraron todos los datos de este teléfono.');
+      setMessage(es.backup.erased);
       onChanged();
     } catch {
-      setError('No se pudieron borrar los datos.');
+      setError(es.backup.eraseFailed);
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <section data-testid="backup-screen">
-      <h1>Copia de seguridad</h1>
-      <p>
-        Tus datos viven solo en este teléfono. Guarda una copia y pásala a una computadora o a una
-        memoria para no perderla.
-      </p>
+    <Screen
+      title={es.backup.title}
+      back={{ label: es.common.myPlots, onClick: onBack }}
+      testId="backup-screen"
+    >
+      <p className="text-lg">{es.backup.intro}</p>
 
-      <h2>Guardar una copia</h2>
-      <p>La copia guarda tus parcelas, campañas y observaciones, con fotos pequeñas.</p>
-      <button type="button" onClick={() => void save()} disabled={busy} data-testid="export-backup">
-        Guardar copia
-      </button>
-
-      <h2>Restaurar una copia</h2>
-      <label htmlFor="backup-file">Elige el archivo de la copia</label>
-      <input
-        id="backup-file"
-        data-testid="import-backup"
-        type="file"
-        accept="application/json,.json"
-        onChange={(event) => void restore(event)}
-        disabled={busy}
-      />
-
-      <h2>Borrar todo</h2>
-      <p>
-        Esto borra todo lo que hay en este teléfono y no se puede deshacer. Escribe {ERASE_WORD}{' '}
-        para confirmar.
-      </p>
-      <label htmlFor="erase-confirmation">Escribe {ERASE_WORD}</label>
-      <input
-        id="erase-confirmation"
-        data-testid="erase-confirmation"
-        type="text"
-        value={eraseConfirmation}
-        onChange={(event) => setEraseConfirmation(event.target.value)}
-        autoComplete="off"
-      />
-      <button
-        type="button"
-        onClick={() => void erase()}
-        disabled={busy || eraseConfirmation !== ERASE_WORD}
-        data-testid="erase-all"
-      >
-        Borrar todo
-      </button>
-
-      {message ? <p data-testid="backup-message">{message}</p> : null}
+      {/* Results first, where the farmer is already looking after tapping. */}
+      {message ? (
+        <Banner tone="good" icon="check" testId="backup-message">
+          {message}
+        </Banner>
+      ) : null}
       {error ? (
-        <p role="alert" data-testid="backup-error">
+        <Banner tone="now" alert testId="backup-error">
           {error}
-        </p>
+        </Banner>
       ) : null}
 
-      <button type="button" onClick={onBack}>
-        Mis parcelas
-      </button>
-    </section>
+      <Section title={es.backup.saveTitle} icon="save">
+        <p className="text-lg text-muted">{es.backup.saveHelp}</p>
+        <Button
+          variant="primary"
+          icon="save"
+          wide
+          onClick={() => void save()}
+          disabled={busy}
+          data-testid="export-backup"
+        >
+          {es.backup.saveButton}
+        </Button>
+      </Section>
+
+      <Section title={es.backup.restoreTitle} icon="history">
+        <label
+          htmlFor="backup-file"
+          className="flex min-h-14 cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-line bg-paper px-5 text-lg font-bold"
+        >
+          <Icon name="history" />
+          <span>{es.backup.restoreLabel}</span>
+        </label>
+        <input
+          id="backup-file"
+          data-testid="import-backup"
+          type="file"
+          accept="application/json,.json"
+          onChange={(event) => void restore(event)}
+          disabled={busy}
+          className="sr-only"
+        />
+      </Section>
+
+      <Section title={es.backup.eraseTitle} icon="trash">
+        <p className="text-lg text-muted">{es.backup.eraseHelp(ERASE_WORD)}</p>
+        <Field
+          id="erase-confirmation"
+          data-testid="erase-confirmation"
+          label={es.backup.eraseLabel(ERASE_WORD)}
+          type="text"
+          value={eraseConfirmation}
+          onChange={(event) => setEraseConfirmation(event.target.value)}
+          autoComplete="off"
+        />
+        <Button
+          variant="danger"
+          icon="trash"
+          wide
+          onClick={() => void erase()}
+          disabled={busy || eraseConfirmation !== ERASE_WORD}
+          data-testid="erase-all"
+        >
+          {es.backup.eraseButton}
+        </Button>
+      </Section>
+    </Screen>
   );
 }

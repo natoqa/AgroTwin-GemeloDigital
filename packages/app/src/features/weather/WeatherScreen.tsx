@@ -1,6 +1,12 @@
 import { useState } from 'react';
+import { RAINFALL_ANSWERS } from '@agrotwin/domain';
 import type { Plot, RainfallAnswer } from '@agrotwin/domain';
 import { useContainer } from '../../composition/ContainerContext';
+import { RAINFALL_LABEL, es } from '../../i18n/es';
+import { Button } from '../../ui/Button';
+import { Banner } from '../../ui/Card';
+import { Choice, ChoiceGroup } from '../../ui/Field';
+import { Screen } from '../../ui/Screen';
 
 /**
  * The daily weather questions.
@@ -14,13 +20,11 @@ import { useContainer } from '../../composition/ContainerContext';
  * the farmer knows for certain, and it is the only one that needs no
  * coefficient to use.
  */
-const RAINFALL_OPTIONS: readonly { value: RainfallAnswer; label: string }[] = [
-  { value: 'none', label: 'No llovió' },
-  { value: 'a_little', label: 'Llovió poco' },
-  { value: 'a_lot', label: 'Llovió mucho' },
-];
-
-export function WeatherScreen({ plot, onSaved, onBack }: {
+export function WeatherScreen({
+  plot,
+  onSaved,
+  onBack,
+}: {
   plot: Plot;
   onSaved: () => void;
   onBack: () => void;
@@ -39,69 +43,61 @@ export function WeatherScreen({ plot, onSaved, onBack }: {
       setSaved(true);
       onSaved();
     } catch {
-      setError('No se pudo guardar. Intenta de nuevo.');
+      setError(es.common.saveFailed);
     }
   };
 
   return (
-    <section data-testid="weather-screen">
-      <h1>El clima de ayer en {plot.name}</h1>
-      <p>Dos preguntas. Con esto el gemelo entiende mejor tu parcela.</p>
+    <Screen
+      title={es.weather.title(plot.name)}
+      back={{ label: es.common.back, onClick: onBack }}
+      testId="weather-screen"
+    >
+      <p className="text-lg">{es.weather.help}</p>
 
-      <fieldset>
-        <legend>¿Llovió ayer?</legend>
-        {RAINFALL_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={rainfall === option.value}
-            data-testid={`rainfall-${option.value}`}
-            onClick={() => setRainfall(option.value)}
+      <ChoiceGroup legend={es.weather.rainQuestion}>
+        {RAINFALL_ANSWERS.map((answer) => (
+          <Choice
+            key={answer}
+            pressed={rainfall === answer}
+            testId={`rainfall-${answer}`}
+            onClick={() => setRainfall(answer)}
           >
-            {option.label}
-          </button>
+            {RAINFALL_LABEL[answer]}
+          </Choice>
         ))}
-      </fieldset>
+      </ChoiceGroup>
 
-      <fieldset>
-        <legend>¿Hizo frío en la noche?</legend>
-        <button
-          type="button"
-          aria-pressed={coldNight === true}
-          data-testid="cold-night-yes"
-          onClick={() => setColdNight(true)}
-        >
-          Sí, hizo frío
-        </button>
-        <button
-          type="button"
-          aria-pressed={coldNight === false}
-          data-testid="cold-night-no"
-          onClick={() => setColdNight(false)}
-        >
-          No, normal
-        </button>
-      </fieldset>
+      <ChoiceGroup legend={es.weather.coldQuestion}>
+        <Choice pressed={coldNight === true} testId="cold-night-yes" onClick={() => setColdNight(true)}>
+          {es.weather.coldYes}
+        </Choice>
+        <Choice pressed={coldNight === false} testId="cold-night-no" onClick={() => setColdNight(false)}>
+          {es.weather.coldNo}
+        </Choice>
+      </ChoiceGroup>
 
-      <button
-        type="button"
+      <Button
+        variant="primary"
+        icon="check"
+        wide
         data-testid="save-weather"
         disabled={rainfall === undefined || coldNight === undefined}
         onClick={() => void save()}
       >
-        Guardar
-      </button>
+        {es.common.save}
+      </Button>
 
-      {saved ? <p data-testid="weather-saved">Gracias. Guardado.</p> : null}
-      {error ? (
-        <p role="alert" data-testid="weather-error">
-          {error}
-        </p>
+      {saved ? (
+        <Banner tone="good" icon="check" testId="weather-saved">
+          {es.weather.saved}
+        </Banner>
       ) : null}
-
-      <button type="button" onClick={onBack}>
-        Volver
-      </button>
-    </section>
+      {error ? (
+        <Banner tone="now" alert testId="weather-error">
+          {error}
+        </Banner>
+      ) : null}
+    </Screen>
   );
 }

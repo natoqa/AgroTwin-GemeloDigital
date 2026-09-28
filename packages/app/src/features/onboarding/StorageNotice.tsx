@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { StorageStatus } from '@agrotwin/domain';
 import { useContainer } from '../../composition/ContainerContext';
+import { es } from '../../i18n/es';
+import { Button } from '../../ui/Button';
+import { Banner } from '../../ui/Card';
 
 /**
  * Asks the browser to keep the twin, and says plainly what the answer means.
@@ -24,21 +27,18 @@ export function StorageNotice({ onOpenBackup }: { onOpenBackup: () => void }) {
 
   if (status.persisted) {
     return (
-      <p data-testid="storage-persisted">
-        Tus datos están guardados en este teléfono y no se borrarán solos.
-      </p>
+      <Banner tone="good" icon="check" testId="storage-persisted">
+        {es.storage.persisted}
+      </Banner>
     );
   }
 
   return (
-    <div data-testid="storage-not-persisted">
-      <p>
-        Este teléfono podría borrar tus datos si se queda sin espacio. Guarda una copia de vez en
-        cuando.
-      </p>
-      <button type="button" onClick={onOpenBackup} data-testid="storage-go-backup">
-        Guardar una copia
-      </button>
+    <div data-testid="storage-not-persisted" className="flex flex-col gap-3">
+      <Banner tone="soon">{es.storage.notPersisted}</Banner>
+      <Button icon="save" onClick={onOpenBackup} data-testid="storage-go-backup">
+        {es.storage.goBackup}
+      </Button>
     </div>
   );
 }

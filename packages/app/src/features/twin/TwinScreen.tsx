@@ -1,15 +1,28 @@
-import { useEffect, useState } from 'react';
-import type { Campaign, CampaignState, CampaignTimeline } from '@agrotwin/domain';
+import { useCallback, useEffect, useState } from 'react';
+import type { Campaign, CampaignAdvice, CampaignState, CampaignTimeline } from '@agrotwin/domain';
 import { useContainer } from '../../composition/ContainerContext';
+import { es } from '../../i18n/es';
+import { Button } from '../../ui/Button';
+import { Banner } from '../../ui/Card';
+import { Screen, Section } from '../../ui/Screen';
 import { AgronomicState } from './AgronomicState';
-import { DIAGNOSIS_HELP, DIAGNOSIS_LABEL, confidenceLabel } from './diagnosisText';
+import { LatestPhoto } from './LatestPhoto';
+import { Recommendations } from './Recommendations';
+import { Scenarios } from './Scenarios';
+import { Timeline } from './Timeline';
 
 /**
- * The twin's board: the state of the plot over one crop cycle.
+ * The TwinBoard: the plot's twin over one crop cycle.
  *
- * The diagnosis is never shown on its own. It appears as one field of a
- * snapshot, next to the day of the campaign it belongs to and the confidence
- * it carries, because a bare diagnosis is what CLAUDE.md §18 forbids.
+ * Read top to bottom, it is the loop of CLAUDE.md §2: what to do (the
+ * Advisor), how to tell the twin what happened (photo, irrigation, weather),
+ * what the twin believes about the crop, what would happen if (the
+ * Simulator), and the history. Everything shown comes from use cases; the
+ * screen holds only what is loaded and which question is open (§7).
+ *
+ * The synthetic-climate warning sits above everything else while the
+ * SENAMHI normals are missing (risk R-01): no advice below it should be read
+ * without it.
  */
 export function TwinScreen({
   campaign,
@@ -24,99 +37,124 @@ export function TwinScreen({
   onClosed: (campaign: Campaign) => void;
   onBack: () => void;
 }) {
-  const { getCampaignTimeline, computeCampaignState, closeCampaign } = useContainer();
+  const { getCampaignTimeline, computeCampaignState, adviseCampaign, recordIrrigation, closeCampaign } =
+    useContainer();
   const [timeline, setTimeline] = useState<CampaignTimeline | undefined>(undefined);
   const [state, setState] = useState<CampaignState | undefined>(undefined);
+  const [advice, setAdvice] = useState<CampaignAdvice | undefined>(undefined);
+  const [irrigation, setIrrigation] = useState<'saved' | 'failed' | undefined>(undefined);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     void getCampaignTimeline(campaign.id).then(setTimeline);
     void computeCampaignState(campaign.id).then(setState);
-  }, [getCampaignTimeline, computeCampaignState, campaign.id]);
+    void adviseCampaign(campaign.id).then(setAdvice);
+  }, [getCampaignTimeline, computeCampaignState, adviseCampaign, campaign.id]);
+
+  useEffect(load, [load]);
 
   if (!timeline) {
-    return <p data-testid="twin-loading">Cargando…</p>;
+    return (
+      <p data-testid="twin-loading" className="p-4 text-lg">
+        {es.app.loading}
+      </p>
+    );
   }
 
-  // Oldest first is how the twin's history is stored; the board leads with the
-  // most recent state, which is what the farmer came to see.
-  const history = [...timeline.entries].reverse();
-  const latest = history[0];
   const open = timeline.campaign.status === 'active';
+  const latest = timeline.entries[timeline.entries.length - 1];
+  const synthetic =
+    state?.latest?.provenance.some((entry) => entry.source === 'synthetic_normals') ?? false;
+
+  const irrigate = async () => {
+    try {
+      await recordIrrigation({ campaignId: campaign.id });
+      setIrrigation('saved');
+      load();
+    } catch {
+      setIrrigation('failed');
+    }
+  };
 
   return (
-    <section data-testid="twin-screen">
-      <h1>{timeline.plot.name}</h1>
-      <p data-testid="campaign-heading">
-        Siembra del {timeline.campaign.plantingDate.toString()}
-        {open ? '' : ` — cosechada el ${timeline.campaign.closedOn?.toString() ?? ''}`}
-      </p>
-
-      {state ? <AgronomicState state={state} /> : null}
-
-      {latest ? (
-        <article data-testid="latest-snapshot">
-          <h2>Estado del {latest.snapshot.date.toString()}</h2>
-          <p data-testid="campaign-day">Día {latest.dayOfCampaign} de la campaña</p>
-          <p data-testid="diagnosis-label">{DIAGNOSIS_LABEL[latest.snapshot.diagnosis.class]}</p>
-          <p>{DIAGNOSIS_HELP[latest.snapshot.diagnosis.class]}</p>
-          <p data-testid="confidence">
-            {confidenceLabel(latest.snapshot.confidence)} (
-            {Math.round(latest.snapshot.confidence * 100)}%)
-          </p>
-          {/*
-            Provenance is shown as what the farmer recognises — "the photo you
-            took" — not as the field name behind it. The full breakdown, once
-            weather and crop stage feed in too, is a Phase 4 screen.
-          */}
-          <p data-testid="provenance">Basado en la foto que tomaste.</p>
-          {latest.observation?.note ? <p>Tu nota: {latest.observation.note}</p> : null}
-          <p data-testid="pending-agronomy">
-            Todavía sin clima ni etapa del cultivo: eso llega más adelante.
-          </p>
-        </article>
-      ) : (
-        <p data-testid="no-snapshots">Aún no hay observaciones de esta campaña.</p>
-      )}
-
-      <h2>Historial</h2>
-      <ol data-testid="snapshot-history">
-        {history.map((entry) => (
-          <li key={entry.snapshot.id}>
-            Día {entry.dayOfCampaign} — {entry.snapshot.date.toString()} —{' '}
-            {DIAGNOSIS_LABEL[entry.snapshot.diagnosis.class]} (
-            {confidenceLabel(entry.snapshot.confidence)})
-            {entry.hasOriginalImage ? '' : ' — foto ya no guardada'}
-          </li>
-        ))}
-      </ol>
-
-      {open ? (
-        <button type="button" onClick={onCapture} data-testid="go-capture">
-          Tomar foto
-        </button>
+    <Screen
+      title={timeline.plot.name}
+      subtitle={
+        <p data-testid="campaign-heading">
+          {es.twin.heading(timeline.campaign.plantingDate, timeline.campaign.closedOn)}
+        </p>
+      }
+      back={{ label: es.twin.back, onClick: onBack }}
+      testId="twin-screen"
+    >
+      {synthetic ? (
+        <Banner tone="soon" testId="synthetic-warning">
+          <strong>{es.twin.syntheticLead}</strong> {es.twin.synthetic}
+        </Banner>
       ) : null}
 
-      {open ? (
-        <button type="button" onClick={onWeather} data-testid="go-weather">
-          Contar el clima de ayer
-        </button>
-      ) : null}
+      <Section title={es.twin.todoTitle} icon="check">
+        {open ? (
+          advice ? (
+            <Recommendations recommendations={advice.recommendations} />
+          ) : (
+            <p className="text-lg">{es.app.loading}</p>
+          )
+        ) : (
+          <p className="text-lg">{es.twin.harvestedNothing}</p>
+        )}
+      </Section>
 
       {open ? (
-        <button
-          type="button"
+        <Section title={es.twin.actionsTitle} icon="field">
+          <Button variant="primary" icon="camera" wide onClick={onCapture} data-testid="go-capture">
+            {es.twin.takePhoto}
+          </Button>
+          <Button variant="primary" icon="drop" wide onClick={() => void irrigate()} data-testid="irrigate">
+            {es.twin.irrigated}
+          </Button>
+          {irrigation === 'saved' ? (
+            <Banner tone="good" icon="check" testId="irrigation-saved">
+              {es.twin.irrigatedSaved}
+            </Banner>
+          ) : null}
+          {irrigation === 'failed' ? (
+            <Banner tone="now" alert testId="irrigation-error">
+              {es.twin.irrigatedFailed}
+            </Banner>
+          ) : null}
+          <Button icon="rain" wide onClick={onWeather} data-testid="go-weather">
+            {es.twin.weather}
+          </Button>
+        </Section>
+      ) : null}
+
+      <Section title={es.twin.stateTitle} icon="sprout">
+        {state ? <AgronomicState state={state} /> : null}
+        <LatestPhoto entry={latest} />
+      </Section>
+
+      {open ? (
+        <Section title={es.scenarios.title} icon="question">
+          <Scenarios campaign={timeline.campaign} />
+        </Section>
+      ) : null}
+
+      <Section title={es.twin.historyTitle} icon="history">
+        <Timeline events={timeline.events} />
+      </Section>
+
+      {open ? (
+        <Button
+          icon="basket"
+          wide
           data-testid="close-campaign"
           onClick={() => {
             void closeCampaign({ campaignId: campaign.id }).then(onClosed);
           }}
         >
-          Ya coseché
-        </button>
+          {es.twin.close}
+        </Button>
       ) : null}
-
-      <button type="button" onClick={onBack}>
-        Volver a las campañas
-      </button>
-    </section>
+    </Screen>
   );
 }

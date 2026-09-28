@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
 import type { Server } from 'node:http';
-import { TODAY, createPlotWithCampaign } from './flows.js';
+import { TODAY, createPlotWithCampaign, giveThePlotALocation } from './flows.js';
 import { startStaticServer, stopStaticServer } from './staticServer.js';
 
 /**
@@ -22,14 +21,6 @@ test.afterAll(async () => {
   if (server) await stopStaticServer(server);
   server = undefined;
 });
-
-async function giveThePlotALocation(page: Page): Promise<void> {
-  await page.getByTestId('plot-latitude').fill('-8.11');
-  await page.getByTestId('plot-longitude').fill('-78.01');
-  await page.getByTestId('plot-altitude').fill('3100');
-  await page.getByTestId('save-plot-details').click();
-  await expect(page.getByTestId('plot-saved')).toBeVisible();
-}
 
 test('a plot with no coordinates is told what is missing, not shown numbers', async ({ page }) => {
   await page.goto('/');

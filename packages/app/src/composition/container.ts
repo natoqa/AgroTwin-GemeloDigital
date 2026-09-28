@@ -21,6 +21,7 @@ import {
 } from '@agrotwin/infrastructure';
 import {
   POTATO_COEFFICIENTS,
+  adviseCampaignUseCase,
   applyImageRetentionUseCase,
   computeCampaignStateUseCase,
   closeCampaignUseCase,
@@ -33,6 +34,7 @@ import {
   recordIrrigationUseCase,
   recordObservationUseCase,
   recordWeatherObservationUseCase,
+  simulateScenarioUseCase,
   startCampaignUseCase,
   updatePlotDetailsUseCase,
 } from '@agrotwin/domain';
@@ -79,6 +81,8 @@ export interface Container {
   readonly computeCampaignState: ReturnType<typeof computeCampaignStateUseCase>;
   readonly recordWeatherObservation: ReturnType<typeof recordWeatherObservationUseCase>;
   readonly recordIrrigation: ReturnType<typeof recordIrrigationUseCase>;
+  readonly adviseCampaign: ReturnType<typeof adviseCampaignUseCase>;
+  readonly simulateScenario: ReturnType<typeof simulateScenarioUseCase>;
   readonly applyImageRetention: ReturnType<typeof applyImageRetentionUseCase>;
   readonly ensurePersistentStorage: ReturnType<typeof ensurePersistentStorageUseCase>;
   readonly exportBackup: ReturnType<typeof exportBackupUseCase>;
@@ -152,6 +156,24 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
       clock,
     }),
     recordIrrigation: recordIrrigationUseCase({ campaigns, irrigations, clock }),
+    adviseCampaign: adviseCampaignUseCase({
+      plots,
+      campaigns,
+      snapshots,
+      weatherObservations,
+      irrigations,
+      weather,
+      coefficients: POTATO_COEFFICIENTS,
+      clock,
+    }),
+    simulateScenario: simulateScenarioUseCase({
+      plots,
+      campaigns,
+      irrigations,
+      weather,
+      coefficients: POTATO_COEFFICIENTS,
+      clock,
+    }),
     recordWeatherObservation: recordWeatherObservationUseCase({
       plots,
       weatherObservations,

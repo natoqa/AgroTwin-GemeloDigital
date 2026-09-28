@@ -26,6 +26,7 @@ export type {
   CampaignTimeline,
   GetCampaignTimelineDependencies,
   TimelineEntry,
+  TimelineEvent,
 } from './GetCampaignTimeline.js';
 export { importBackupUseCase } from './ImportBackup.js';
 export type { ImportBackupDependencies, ImportBackupSummary } from './ImportBackup.js';
