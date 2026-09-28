@@ -23,9 +23,18 @@ Proyecto del curso Ingeniería de Software II, Universidad Nacional de Trujillo.
 
 ## Estado
 
-**Fase 0 — Andamiaje.** El repositorio hace cumplir sus reglas arquitectónicas
-por herramienta. Todavía no hay interfaz, ni agronomía, ni inferencia: eso
-empieza en la Fase 1.
+| Fase | Contenido | Estado |
+|---|---|---|
+| 0–2 | Andamiaje, rebanada vertical, dominio y persistencia | ✅ |
+| 3 | Motor agronómico: grados-día, FAO-56 con Hargreaves, tizón de Wallin | ✅ |
+| 4 | Simulador *what-if*, Advisor priorizado, panel del gemelo, accesibilidad | ✅ |
+| 5 | Inferencia real: MobileNetV3-Small en el teléfono, pipeline de entrenamiento | ✅ |
+| 6 | Aprendizaje federado por archivo con hub FedAvg | ✅ recortada (ADR-0011) |
+| 7 | Cifrado en reposo, modelo de amenazas | ❌ no hecha |
+| 8 | Evidencia y cierre | en curso |
+
+**Lo que no funciona todavía, y por qué:** [`docs/limitaciones.md`](./docs/limitaciones.md).
+**Cómo mostrarlo:** [`docs/demo/guion.md`](./docs/demo/guion.md).
 
 ## Requisitos
 
@@ -34,8 +43,8 @@ empieza en la Fase 1.
 | Node | 24 (ver `.nvmrc`) | |
 | pnpm | fijado en `packageManager` | se activa con `corepack enable`; no lo instales global |
 | Python | 3.11 | solo para `services/edge-hub`; lo resuelve `uv` |
-| uv | reciente | solo para `services/edge-hub` |
-| mkcert | 1.4+ | solo para el spike R-02 |
+| uv | 0.12+ | para `services/edge-hub` y `ml/pipeline`; instala Python 3.11 solo |
+| mkcert | 1.4+ | solo para servir la PWA por HTTPS en la LAN (spike R-02) |
 
 Si `corepack enable` falla por permisos en Windows, instala los shims en un
 directorio de usuario que ya esté en el PATH:
@@ -56,6 +65,39 @@ pnpm build        # tsc --build y después el build de la PWA
 pnpm test:e2e     # Playwright contra el build de producción
 ```
 
+## Reproducir desde cero
+
+Pasos exactos en una máquina limpia (Windows, Linux o macOS), probados en el
+CI de GitHub en cada push a `main`:
+
+```bash
+git clone https://github.com/natoqa/AgroTwin-GemeloDigital.git
+cd AgroTwin-GemeloDigital
+corepack enable                   # activa el pnpm fijado en package.json
+pnpm install --frozen-lockfile
+
+pnpm lint && pnpm typecheck && pnpm test && pnpm test:arch && pnpm build
+
+# El E2E del aprendizaje federado ejecuta el hub real:
+(cd services/edge-hub && uv sync --frozen)
+pnpm test:e2e                     # 19 pruebas, incluida la del ciclo sin red
+
+# Opcional: los tests de Python
+(cd services/edge-hub && uv run pytest -q)
+(cd ml/pipeline && uv sync --frozen && uv run pytest -q)
+```
+
+Para **usar** la app en el navegador del computador:
+
+```bash
+pnpm --filter @agrotwin/app build
+pnpm --filter @agrotwin/app preview        # http://localhost:4173
+```
+
+El modelo entrenado ya viene en el repositorio (`packages/app/public/model/`):
+no hace falta reentrenar. Para reentrenarlo, ver
+[`ml/pipeline/README.md`](./ml/pipeline/README.md).
+
 Para levantar la PWA en desarrollo:
 
 ```bash
@@ -75,8 +117,11 @@ corriendo, vuelve a lanzar `dev` para que Vite vea el código nuevo.
 packages/domain/           TypeScript PURO — el gemelo. Sin DOM, sin Node.
 packages/infrastructure/   Adaptadores. Es donde el mundo exterior toca el dominio.
 packages/app/              React + Vite = la PWA. Único sitio que conoce a ambos.
-services/edge-hub/         Hub FastAPI en LAN. Hoy: solo el spike R-02.
-docs/adr/                  Decisiones de arquitectura (0001–0008).
+services/edge-hub/         Hub en LAN: spike R-02 y FedAvg por archivo.
+ml/pipeline/               Entrenamiento fuera del dispositivo (PyTorch → ONNX).
+docs/adr/                  Decisiones de arquitectura (0001–0011).
+docs/agronomy/             Fuente de cada coeficiente agronómico.
+docs/demo/                 Guion de la demostración.
 docs/nfr/                  Dispositivo de referencia y mediciones.
 docs/spikes/               Resultados de pruebas de viabilidad.
 ```
@@ -101,10 +146,11 @@ El tiempo entra solo por `ClockPort`; la aleatoriedad, solo por `RandomPort`.
 Esto no es una convención: es lo que impide que la lógica agronómica se vuelva
 imposible de probar de forma determinista (riesgo R-13).
 
-## Hub de borde (spike R-02)
+## Hub de borde
 
-Ver [`services/edge-hub/README.md`](./services/edge-hub/README.md) y el informe
-en [`docs/spikes/r02-https-lan.md`](./docs/spikes/r02-https-lan.md).
+Ronda de aprendizaje federado por archivo y spike R-02:
+[`services/edge-hub/README.md`](./services/edge-hub/README.md). Informe del
+spike en [`docs/spikes/r02-https-lan.md`](./docs/spikes/r02-https-lan.md).
 
 ## Notas sobre versiones
 
