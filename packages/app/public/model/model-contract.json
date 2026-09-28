@@ -1,0 +1,58 @@
+{
+  "format": "agrotwin-model-contract",
+  "formatVersion": 1,
+  "version": "potato-mnv3s-2026-09-28",
+  "artifacts": {
+    "backbone": {
+      "file": "backbone.int8.onnx",
+      "sha256": "c3b5698cbc847c7ff2691ba700d1664989fc0acca6bba832aa57e4caf83c460d",
+      "bytes": 1637991,
+      "quantization": "int8-weights-per-channel-float32-activations"
+    },
+    "head": {
+      "file": "head.json",
+      "sha256": "4820b41c16da2b18302e832d91a7f160f6e672428d8f94e2fa0dcdf127d88659",
+      "bytes": 68840
+    }
+  },
+  "input": {
+    "name": "image",
+    "layout": "NCHW",
+    "channels": 3,
+    "height": 224,
+    "width": 224,
+    "resizeShorterSide": 256,
+    "crop": "center",
+    "colorSpace": "RGB",
+    "scale": "0-1",
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "output": {
+    "name": "embedding",
+    "embeddingDimension": 1024
+  },
+  "classes": [
+    "healthy",
+    "early_blight",
+    "late_blight"
+  ],
+  "temperature": 4.554781270719481,
+  "rejectionThreshold": 0.7005714774131775,
+  "targetPrecision": 0.9,
+  "thresholdMetTarget": false,
+  "trainedOn": {
+    "lab": "PlantVillage (spMohanty/PlantVillage-Dataset), potato folders",
+    "field": "PlantDoc (pratikkayal/PlantDoc-Dataset), potato folders",
+    "seed": 20260928,
+    "epochs": 12
+  }
+}

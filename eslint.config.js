@@ -57,6 +57,8 @@ export default tseslint.config(
       '**/test-results/**',
       '**/node_modules/**',
       '**/coverage/**',
+      // Python virtual environments ship third-party JavaScript (PyTorch does).
+      '**/.venv/**',
       '**/*.tsbuildinfo',
       // Fixtures here are *expected* to fail lint; `pnpm test:arch` runs
       // ESLint against them explicitly with --no-ignore.

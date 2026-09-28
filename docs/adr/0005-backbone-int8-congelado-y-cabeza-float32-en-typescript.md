@@ -1,6 +1,6 @@
 # ADR-0005 — Backbone INT8 congelado y cabeza float32 entrenada en TypeScript
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada, enmendada en la Fase 5 (2026-09-28): INT8 **solo en los pesos**
 - **Fecha:** 2026-09-21
 - **Fase:** 0
 - **Riesgos relacionados:** R-03, R-06
@@ -48,3 +48,28 @@ la Fase 5 (mismos logits que PyTorch con tolerancia 1e-4) y a que
 **Qué invalidaría esta decisión.** Que el test de paridad no se pueda satisfacer
 dentro de la tolerancia, o que la cuantización INT8 degrade la separabilidad de
 los embeddings por debajo de lo utilizable, medido en la Fase 5.
+
+## Enmienda — Fase 5 (2026-09-28)
+
+**Qué cambia.** El backbone se entrega con los **pesos** en INT8 (simétrico,
+por canal de salida, con `DequantizeLinear`) y las **activaciones** en
+float32. La cuantización estática completa, pesos y activaciones, se
+construyó, se midió y **se descartó**.
+
+**Por qué.** Sobre MobileNetV3-Small, la cuantización estática deja un
+embedding con coseno 0.19 respecto al FP32 (0.50 en la mejor de diez
+variantes probadas), y el F1 de los tizones cae de 0.889 a 0.044. El error de
+cada operador es pequeño, pero se acumula a través de los bloques
+*squeeze-excitation* y las HardSwish. Con INT8 solo en los pesos, el coseno es
+0.987, el F1 casi no cambia y el archivo pesa 1.65 MB. Mediciones completas en
+`ml/pipeline/reports/quantization.md`.
+
+**Qué no cambia.** Backbone congelado, cabeza float32 en TypeScript, paridad
+con PyTorch a 1e-4 sobre embeddings del backbone entregado.
+
+**Qué cuesta.** El cálculo no usa aritmética entera, así que la cuantización
+ahorra almacenamiento y descarga, no tiempo. Si RNF-01 no se cumple en el
+dispositivo de referencia, la salida prevista es entrenamiento consciente de
+la cuantización (QAT). Decisión aprobada por el equipo el 2026-09-28
+(opción A).
+

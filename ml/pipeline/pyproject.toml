@@ -1,0 +1,52 @@
+[project]
+name = "agrotwin-ml"
+version = "0.1.0"
+description = "AgroTwin offline ML pipeline: split MobileNetV3-Small, INT8 backbone, float32 head."
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "numpy",
+    "pillow",
+    "torch",
+    "torchvision",
+    "onnx",
+    "onnxruntime",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+# CPU builds of PyTorch on every platform. PyPI's Linux wheels bundle CUDA
+# (gigabytes) that this pipeline never uses: training runs on a laptop CPU
+# (Phase 5, D3) and CI only runs the fast tests.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agrotwin_ml"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# The Markdown report is a template: its table rows cannot be wrapped.
+"src/agrotwin_ml/__main__.py" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
