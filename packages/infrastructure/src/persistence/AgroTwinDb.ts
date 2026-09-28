@@ -6,6 +6,7 @@ import type {
   ObservationRecord,
   PlotRecord,
   SnapshotRecord,
+  WeatherObservationRecord,
 } from './records.js';
 
 /**
@@ -29,6 +30,7 @@ export class AgroTwinDb extends Dexie {
   declare observations: EntityTable<ObservationRecord, 'id'>;
   declare snapshots: EntityTable<SnapshotRecord, 'id'>;
   declare images: EntityTable<ImageRecord, 'id'>;
+  declare weatherObservations: EntityTable<WeatherObservationRecord, 'id'>;
 
   constructor(name = 'agrotwin') {
     super(name);
@@ -52,5 +54,18 @@ export class AgroTwinDb extends Dexie {
         await transaction.table('snapshots').clear();
         await transaction.table('images').clear();
       });
+
+    // Version 3 only adds a table. Nothing existing is touched, so there is no
+    // upgrade function: what the farmer already has carries straight over.
+    this.version(3).stores({
+      plots: 'id, createdAt',
+      campaigns: 'id, plotId, status, [plotId+status]',
+      observations: 'id, campaignId, imageRef, at, [campaignId+at]',
+      snapshots: 'id, plotId, campaignId, at, [plotId+at], [campaignId+at]',
+      images: 'id, kind, storedAt, [kind+storedAt]',
+      // Keyed by plot and day, so answering twice about the same day replaces
+      // the earlier answer instead of stacking up contradictions.
+      weatherObservations: 'id, plotId, date, [plotId+date]',
+    });
   }
 }

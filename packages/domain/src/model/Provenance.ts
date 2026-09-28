@@ -3,6 +3,11 @@ export const PROVENANCE_SOURCES = [
   'image_diagnosis',
   'manual_weather',
   'climate_normals',
+  // A stand-in for normals nobody has measured. It exists so the engine can
+  // be exercised while risk R-01 is open, and it is a separate source
+  // precisely so that nothing derived from it can be mistaken for data
+  // (CLAUDE.md §9).
+  'synthetic_normals',
   'network_weather_cache',
 ] as const;
 

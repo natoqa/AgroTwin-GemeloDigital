@@ -50,11 +50,13 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # `pnpm test` runs with coverage, so RNF-06's 85% over packages/domain
+      # is enforced here: statements, branches, functions and lines. Active
+      # from Phase 3 (CLAUDE.md 7).
       - name: Test
         run: pnpm test
 
       # Proves the architectural rules still reject what they must.
-      # No coverage threshold yet: CLAUDE.md §7 activates it in Phase 3.
       - name: Architectural guards
         run: pnpm test:arch
 

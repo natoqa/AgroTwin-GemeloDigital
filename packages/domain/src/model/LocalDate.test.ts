@@ -49,3 +49,20 @@ describe('LocalDate', () => {
     expect(JSON.stringify({ date: LocalDate.parse('2026-09-21') })).toBe('{"date":"2026-09-21"}');
   });
 });
+
+describe('dayOfYear', () => {
+  it('starts the year at one', () => {
+    expect(LocalDate.of(2026, 1, 1).dayOfYear()).toBe(1);
+  });
+
+  it('reaches 246 on 3 September of a common year, as FAO-56 Example 8 does', () => {
+    expect(LocalDate.of(2026, 9, 3).dayOfYear()).toBe(246);
+  });
+
+  it('accounts for the extra day of a leap year', () => {
+    expect(LocalDate.of(2024, 3, 1).dayOfYear()).toBe(61);
+    expect(LocalDate.of(2026, 3, 1).dayOfYear()).toBe(60);
+    expect(LocalDate.of(2024, 12, 31).dayOfYear()).toBe(366);
+    expect(LocalDate.of(2026, 12, 31).dayOfYear()).toBe(365);
+  });
+});

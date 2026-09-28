@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import type { Campaign, CampaignTimeline } from '@agrotwin/domain';
+import type { Campaign, CampaignState, CampaignTimeline } from '@agrotwin/domain';
 import { useContainer } from '../../composition/ContainerContext';
+import { AgronomicState } from './AgronomicState';
 import { DIAGNOSIS_HELP, DIAGNOSIS_LABEL, confidenceLabel } from './diagnosisText';
 
 /**
@@ -13,20 +14,24 @@ import { DIAGNOSIS_HELP, DIAGNOSIS_LABEL, confidenceLabel } from './diagnosisTex
 export function TwinScreen({
   campaign,
   onCapture,
+  onWeather,
   onClosed,
   onBack,
 }: {
   campaign: Campaign;
   onCapture: () => void;
+  onWeather: () => void;
   onClosed: (campaign: Campaign) => void;
   onBack: () => void;
 }) {
-  const { getCampaignTimeline, closeCampaign } = useContainer();
+  const { getCampaignTimeline, computeCampaignState, closeCampaign } = useContainer();
   const [timeline, setTimeline] = useState<CampaignTimeline | undefined>(undefined);
+  const [state, setState] = useState<CampaignState | undefined>(undefined);
 
   useEffect(() => {
     void getCampaignTimeline(campaign.id).then(setTimeline);
-  }, [getCampaignTimeline, campaign.id]);
+    void computeCampaignState(campaign.id).then(setState);
+  }, [getCampaignTimeline, computeCampaignState, campaign.id]);
 
   if (!timeline) {
     return <p data-testid="twin-loading">Cargando…</p>;
@@ -45,6 +50,8 @@ export function TwinScreen({
         Siembra del {timeline.campaign.plantingDate.toString()}
         {open ? '' : ` — cosechada el ${timeline.campaign.closedOn?.toString() ?? ''}`}
       </p>
+
+      {state ? <AgronomicState state={state} /> : null}
 
       {latest ? (
         <article data-testid="latest-snapshot">
@@ -86,6 +93,12 @@ export function TwinScreen({
       {open ? (
         <button type="button" onClick={onCapture} data-testid="go-capture">
           Tomar foto
+        </button>
+      ) : null}
+
+      {open ? (
+        <button type="button" onClick={onWeather} data-testid="go-weather">
+          Contar el clima de ayer
         </button>
       ) : null}
 

@@ -323,8 +323,14 @@ function parseCampaign(value: unknown, index: number): CampaignDto {
 
 function parseDiagnosis(value: unknown, path: string): DiagnosisDto {
   const record = asRecord(value, path);
+  const diagnosisClass = asString(record['class'], `${path}.class`);
+  // Checked here rather than during mapping, so a file naming a diagnosis this
+  // version cannot represent is refused before a single row is written.
+  if (!isDiagnosisClass(diagnosisClass)) {
+    throw new BackupFormatError(`${path}.class names a diagnosis this version does not know`);
+  }
   return {
-    class: asString(record['class'], `${path}.class`),
+    class: diagnosisClass,
     confidence: asNumber(record['confidence'], `${path}.confidence`),
     modelVersion: asString(record['modelVersion'], `${path}.modelVersion`),
   };

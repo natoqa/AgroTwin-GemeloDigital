@@ -371,9 +371,10 @@ Un ADR por decisión, en `docs/adr/`, con estados `Propuesta`, `Aceptada`,
 | 0006 | FedAvg propio en FastAPI; Flower evaluado y descartado | Aceptada |
 | 0007 | Imágenes en OPFS con índice en IndexedDB y retención en el dominio | Aceptada |
 | 0008 | Respaldo como JSON versionado con miniaturas, sin originales | Aceptada |
+| 0009 | Tizón tardío con el modelo de Wallin (1962); datos de entrada declarados como el eslabón débil | Aceptada |
 
-Nuevos ADR esperados: modelo de riesgo de tizón elegido (Fase 3), estrategia de
-cifrado en reposo (Fase 7), y cualquier renegociación de RNF.
+Nuevos ADR esperados: estrategia de cifrado en reposo (Fase 7) y cualquier
+renegociación de RNF.
 
 ---
 
@@ -381,7 +382,7 @@ cifrado en reposo (Fase 7), y cualquier renegociación de RNF.
 
 | ID | Riesgo | Severidad | Fase | Estado |
 |----|--------|-----------|------|--------|
-| R-01 | Sin fuente fiable de datos climáticos | Crítica | 0→3 | Mitigación definida (sección 9) |
+| R-01 | Sin fuente fiable de datos climáticos | Crítica | 0→3 | **Activo.** Los tres adaptadores existen y funcionan, pero SENAMHI no ha llegado: se corre sobre un fixture `SYNTHETIC` con procedencia propia y confianza 0.1, y la pantalla lo advierte. Ningún resultado agronómico es válido hasta sustituir el archivo |
 | R-02 | HTTPS en LAN / contenido mixto | Crítica | 0→6 | Spike verde en escritorio; **pendiente prueba en teléfono** |
 | R-03 | ORT Web no entrena | Crítica | — | Resuelto por ADR-0005 |
 | R-04 | Multihilo WASM exige COOP/COEP | Alta | 5, 7 | Línea base single-thread; el hub emite COOP/COEP y en escritorio habilita SAB |
@@ -392,7 +393,7 @@ cifrado en reposo (Fase 7), y cualquier renegociación de RNF.
 | R-09 | Demo federada sin ganancia estadística | Media | 6 | Reencuadrado en alcance |
 | R-10 | Flower incompatible con navegador | Media | — | Resuelto por ADR-0006 |
 | R-11 | Sesgo de fondo de PlantVillage | Media | 5 | PlantDoc + augmentación + evaluación de campo |
-| R-12 | Coeficientes sin fuente | Media | 3 | Campo `source` obligatorio |
+| R-12 | Coeficientes sin fuente | Media | 3 | **Mitigado con mecanismo, pendiente de datos.** `source` obligatorio y verificado por test; sin verificar ⇒ baja la confianza; ausente ⇒ el modelo se niega a calcular. **12 de 23 coeficientes siguen pendientes de revisión agronómica** (`docs/agronomy/sources.md` §4) |
 | R-13 | Lógica agronómica filtrándose a React | Baja | 0 | Mitigado: `pnpm test:arch` lo verifica en CI |
 
 Actualiza la columna Estado al cerrar cada fase.
@@ -497,12 +498,18 @@ FAO-56, modelo de riesgo de tizón tardío (con su ADR), los tres adaptadores de
 `WeatherPort`, propagación de procedencia y confianza, `docs/agronomy/sources.md`.
 
 **DoD:**
-- [ ] Umbral de cobertura del 85% en `domain` activado en CI y cumplido.
-- [ ] Tests contra ejemplos numéricos publicados (FAO-56 incluye ejemplos
-      resueltos) con tolerancia explícita.
-- [ ] Simulación de una campaña de 120 días en Node en milisegundos, con test.
-- [ ] Cada coeficiente tiene fuente o está marcado `TODO` y reduce la confianza.
-- [ ] Lista de coeficientes `TODO` reportada al equipo para revisión agronómica.
+- [x] Umbral de cobertura del 85% en `domain` activado en CI y cumplido.
+      Las cuatro métricas; ramas al 86.73%. Comprobado que el umbral falla
+      cuando no se cumple.
+- [x] Tests contra ejemplos numéricos publicados con tolerancia explícita.
+      FAO-56 Ejemplo 8 (Ra, con todos sus intermedios) y Ejemplo 36 (TAW y RAW
+      en sus tres suelos). **FAO-56 no publica ejemplo resuelto de Hargreaves**,
+      y eso está declarado en lugar de disimulado.
+- [x] Simulación de una campaña de 120 días en Node en milisegundos, con test.
+- [x] Cada coeficiente tiene fuente o está marcado `TODO` y reduce la confianza.
+      Además, un coeficiente **ausente** hace que el modelo se niegue a calcular.
+- [x] Lista de coeficientes `TODO` reportada al equipo para revisión agronómica.
+      `docs/agronomy/sources.md` §4: doce entradas.
 
 ### Fase 4 — Simulator, Advisor y TwinBoard
 
@@ -669,10 +676,83 @@ Cuando una fase las necesite, pídelas explícitamente y no las simules.
 
 > Mantenida por Claude Code. Actualizar al cerrar cada fase.
 
-**Fase actual:** 2 — Dominio y persistencia. Implementada y verificada en la
-rama local `fase/2-dominio-persistencia`; pendiente de tu confirmación para el
-merge a `main` y la etiqueta `fase-2`. La Fase 3 no empieza sin confirmación
-explícita.
+**Fase actual:** 3 — BehaviorEngine. Implementada y verificada en la rama local
+`fase/3-behavior-engine`; pendiente de tu confirmación para el merge a `main` y
+la etiqueta `fase-3`. La Fase 4 no empieza sin confirmación explícita.
+
+**Fase 3 — cierre (2026-09-22)**
+
+El motor agronómico existe: grados-día, radiación extraterrestre,
+evapotranspiración por Hargreaves-Samani, balance hídrico FAO-56 y riesgo de
+tizón por Wallin, con la procedencia y la incertidumbre de cada entrada
+propagadas hasta la pantalla.
+
+DoD verificado ejecutando comandos:
+
+- `pnpm lint && pnpm typecheck && pnpm test && pnpm test:arch && pnpm build` en verde.
+- **295 tests unitarios en 36 archivos** (eran 126) y **13 E2E** (eran 10).
+- Cobertura del dominio con umbral **activo en CI**: sentencias 97.30%, ramas
+  **86.73%**, funciones 98.80%, líneas 97.71%. Comprobado que falla al subirlo.
+- Campaña de 120 días simulada en milisegundos, con test y presupuesto.
+- App shell: **387.89 KiB** de precache frente a los 8 MB de RNF-02.
+
+**Lo verificado contra fuente, y lo que no:**
+
+| Validación | Estado |
+|---|---|
+| FAO-56 Ejemplo 8 — Ra a 20°S, con **todos** los intermedios impresos | ✅ |
+| FAO-56 Ejemplo 36 — TAW y RAW en los **tres** suelos | ✅ |
+| Tabla de Wallin (1962), banda por banda y en cada frontera | ✅ |
+| Kc, Zr, p, altura (FAO-56 Tablas 12 y 22) | ✅ |
+| Temperatura base 7 °C (Sands et al., 1979) | ✅ para la especie, **no** para cultivares andinos |
+| ET0 de Hargreaves contra un ejemplo publicado | ❌ **FAO-56 no publica ninguno.** Verificado contra la fórmula y sus propiedades, y declarado como tal |
+
+**Decisiones cerradas (Fase 3):**
+
+- Un coeficiente no es un número: es número + cita + estado. **Verificado** no
+  cuesta nada, **provisional** multiplica la confianza por 0.6, y **ausente**
+  (`null`) hace que el modelo **se niegue a calcular**.
+- Tizón tardío: Wallin (1962), ADR-0009. Fiel al modelo, sin inventarle las
+  entradas.
+- El día agronómico y las normales van por fuentes de procedencia distintas;
+  `synthetic_normals` es una fuente aparte de `climate_normals` para que nada
+  derivado de números inventados pueda confundirse con un dato.
+- La escorrentía no se modela. Se trata toda la lluvia como infiltrada, lo que
+  hace que el gemelo aconseje regar **de menos** antes que de más: la dirección
+  segura para quien paga el agua.
+- El puerto de clima recibe la `Plot` entera, no solo sus coordenadas: las
+  normales necesitan el lugar y las respuestas del agricultor necesitan saber
+  en qué parcela estaba.
+- RNF-06 se gatea sobre **las cuatro** métricas de cobertura. Gatear solo las
+  tres fáciles habría dejado el umbral como decoración.
+
+**Dos entregables construidos y apagados, a propósito:**
+
+- **Fenología.** Nadie ha dado los umbrales de tiempo térmico para cultivares
+  andinos, así que `estimatePhenologicalStage` devuelve «sin etapa» y confianza
+  0, diciendo qué le falta. Cuatro números y su fuente la encienden sin tocar
+  código.
+- **Riesgo de tizón.** Ninguna fuente de clima aquí mide horas de humedad
+  foliar, y derivarlas de «¿llovió ayer?» sería un supuesto sin fuente sobre
+  una salida que el agricultor convierte en fungicida comprado y aplicado.
+
+**Desviaciones (Fase 3):**
+
+- **Contradicción §9 vs §3/§18, sin resolver en el documento.** §9 pide un
+  `CachedNetworkWeatherAdapter`; §3 y §18 prohíben cualquier API remota. Se
+  implementó reconciliándolas por la excepción que el propio §3 concede al hub
+  en LAN: el *fetcher* se inyecta y **no se implementa**, y la única
+  implementación admisible habla con el hub. Nada alcanza internet. **Requiere
+  decisión tuya** sobre si se corrige §9 o se confirma esta lectura.
+- **`performance` declarado localmente** en el test de rendimiento del motor. El
+  `tsconfig` del dominio sigue sin DOM ni tipos de Node, y `pnpm test:arch`
+  sigue rechazando globales del host en código de producción.
+- **Suelo como coeficiente del cultivo.** `soilFieldCapacity` y
+  `soilWiltingPoint` viven en `potato.v1.json` porque §8.2 exige un solo
+  archivo, pero son propiedades del *suelo de la parcela*, no del cultivo.
+  Debería ser un dato por parcela; anotado en `sources.md`.
+- **Bug de la Fase 2 corregido:** `PlotScreen` se remontaba al guardar y borraba
+  la confirmación. Lo encontró el E2E nuevo.
 
 **Fase 2 — cierre (2026-09-22)**
 
@@ -857,9 +937,16 @@ clave privada del hub no ha entrado nunca al repositorio.
       sirve, porque la pregunta es binaria y no depende de la gama. Procedimiento
       y tabla vacía en `docs/spikes/r02-https-lan.md`. Mientras no se ejecute,
       ADR-0003 sigue condicionado.
-- [ ] Normales climatológicas de SENAMHI (necesarias antes de Fase 3).
-      **Bloqueante ya:** la Fase 3 empieza sin ellas solo con fixture
-      `SYNTHETIC` y sin declarar validación agronómica.
+- [ ] **Normales climatológicas de SENAMHI.** La Fase 3 se cerró sin ellas,
+      sobre `data/climate/la-libertad.SYNTHETIC.json`, cuyos números están
+      inventados. Sustituir ese archivo es el único cambio necesario: nada del
+      código depende de que sea sintético salvo la etiqueta. **Hasta entonces
+      ningún resultado agronómico es presentable.**
+- [ ] **Revisión agronómica de doce coeficientes** (`docs/agronomy/sources.md`
+      §4). Los cuatro que más desbloquean son los umbrales de tiempo térmico
+      (`gddToEmergence`, `gddToTuberInitiation`, `gddToBulking`,
+      `gddToMaturity`): con ellos y su fuente, la fenología se enciende sin
+      tocar código.
 - [ ] **(Fase 2)** Probar en el Redmi Note 14: almacenamiento persistente
       concedido, guardar copia a Descargas y restaurarla. Tabla en
       `docs/nfr/measurements.md`.

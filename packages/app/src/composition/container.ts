@@ -1,5 +1,11 @@
+import climateNormalsDocument from '../../../../data/climate/la-libertad.SYNTHETIC.json' with { type: 'json' };
 import {
   AgroTwinDb,
+  CachedNetworkWeatherAdapter,
+  ClimateNormals,
+  DexieWeatherObservationRepository,
+  ManualWeatherAdapter,
+  NormalsWeatherAdapter,
   BackupFileAdapter,
   CanvasImageThumbnailer,
   CryptoIdGenerator,
@@ -13,7 +19,9 @@ import {
   SystemClockAdapter,
 } from '@agrotwin/infrastructure';
 import {
+  POTATO_COEFFICIENTS,
   applyImageRetentionUseCase,
+  computeCampaignStateUseCase,
   closeCampaignUseCase,
   createPlotUseCase,
   ensurePersistentStorageUseCase,
@@ -22,6 +30,7 @@ import {
   getCampaignTimelineUseCase,
   importBackupUseCase,
   recordObservationUseCase,
+  recordWeatherObservationUseCase,
   startCampaignUseCase,
   updatePlotDetailsUseCase,
 } from '@agrotwin/domain';
@@ -32,6 +41,8 @@ import type {
   PlotRepositoryPort,
   SnapshotRepositoryPort,
   StoragePort,
+  WeatherObservationRepositoryPort,
+  WeatherPort,
 } from '@agrotwin/domain';
 
 /**
@@ -52,6 +63,8 @@ export interface Container {
   readonly snapshots: SnapshotRepositoryPort;
   readonly images: ImageStorePort;
   readonly storage: StoragePort;
+  readonly weather: WeatherPort;
+  readonly weatherObservations: WeatherObservationRepositoryPort;
   readonly backupFile: BackupFileAdapter;
   readonly createPlot: ReturnType<typeof createPlotUseCase>;
   readonly updatePlotDetails: ReturnType<typeof updatePlotDetailsUseCase>;
@@ -59,6 +72,8 @@ export interface Container {
   readonly closeCampaign: ReturnType<typeof closeCampaignUseCase>;
   readonly recordObservation: ReturnType<typeof recordObservationUseCase>;
   readonly getCampaignTimeline: ReturnType<typeof getCampaignTimelineUseCase>;
+  readonly computeCampaignState: ReturnType<typeof computeCampaignStateUseCase>;
+  readonly recordWeatherObservation: ReturnType<typeof recordWeatherObservationUseCase>;
   readonly applyImageRetention: ReturnType<typeof applyImageRetentionUseCase>;
   readonly ensurePersistentStorage: ReturnType<typeof ensurePersistentStorageUseCase>;
   readonly exportBackup: ReturnType<typeof exportBackupUseCase>;
@@ -77,6 +92,22 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
   const snapshots = new DexieSnapshotRepository(db);
   const images = await OpfsImageStore.open(db, ids, clock, new CanvasImageThumbnailer());
   const storage = new NavigatorStorageAdapter();
+  const weatherObservations = new DexieWeatherObservationRepository(db);
+
+  /*
+   * The three weather sources of CLAUDE.md §9, stacked cheapest-to-best:
+   * normals underneath, a cache that will one day talk to the LAN hub in the
+   * middle, and the farmer's own answers on top. Today the fixture is
+   * SYNTHETIC and the cache has no fetcher, so every figure is tagged
+   * `synthetic_normals` until the farmer answers or SENAMHI data arrives.
+   */
+  const weather: WeatherPort = new ManualWeatherAdapter(
+    new CachedNetworkWeatherAdapter(
+      new NormalsWeatherAdapter(ClimateNormals.fromDocument(climateNormalsDocument)),
+    ),
+    weatherObservations,
+    POTATO_COEFFICIENTS,
+  );
   // Phase 5 replaces this line with the ONNX adapter in a worker.
   const inference = new MockInferenceAdapter();
 
@@ -87,6 +118,8 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
     snapshots,
     images,
     storage,
+    weather,
+    weatherObservations,
     backupFile: new BackupFileAdapter(),
     createPlot: createPlotUseCase({ plots, clock, ids }),
     updatePlotDetails: updatePlotDetailsUseCase({ plots }),
@@ -101,6 +134,19 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
       inference,
       clock,
       ids,
+      agronomy: { weather, coefficients: POTATO_COEFFICIENTS },
+    }),
+    computeCampaignState: computeCampaignStateUseCase({
+      plots,
+      campaigns,
+      weather,
+      coefficients: POTATO_COEFFICIENTS,
+      clock,
+    }),
+    recordWeatherObservation: recordWeatherObservationUseCase({
+      plots,
+      weatherObservations,
+      clock,
     }),
     getCampaignTimeline: getCampaignTimelineUseCase({ plots, campaigns, observations, snapshots }),
     applyImageRetention: applyImageRetentionUseCase({ images, observations, clock }),
