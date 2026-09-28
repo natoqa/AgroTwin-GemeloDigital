@@ -217,6 +217,74 @@ estado agronómico, más el fixture climático embebido.
 
 ---
 
+## Fase 4 — 2026-09-28
+
+### Accesibilidad (RNF-09: cero violaciones críticas de axe en flujos principales)
+
+- **Procedimiento:** `pnpm --filter @agrotwin/app test:e2e`, spec
+  `e2e/accessibility.spec.ts`, con `@axe-core/playwright` 4.13.0 (axe-core
+  4.13.0), perfil Pixel 7 de Playwright, contra el build de producción.
+- **Criterio:** la prueba falla con violaciones **críticas o serias**; más
+  estricto que RNF-09 (decisión D4 de la Fase 4).
+- **Pantallas analizadas, cada una con datos:** lista de parcelas vacía y con
+  parcela; TwinBoard con recomendaciones; TwinBoard con un escenario resuelto y
+  un riego anotado; captura; TwinBoard con foto; preguntas de clima
+  respondidas; lista de campañas; datos de la parcela; respaldo.
+- **Ejecutado en:** máquina de desarrollo (Chromium de Playwright).
+
+**Resultado: 0 violaciones críticas y 0 serias en las 10 pantallas analizadas.**
+Queda la revisión humana en el teléfono (DoD de la Fase 4): axe no juzga si un
+texto se lee bajo el sol ni si el agricultor entiende una frase.
+
+### Contraste de los tokens de diseño
+
+- **Procedimiento:** razón de contraste WCAG 2.x calculada con un script
+  (luminancia relativa) sobre cada par texto/fondo de `src/index.css`.
+
+| Par | Razón |
+|---|---|
+| Texto sobre fondo de página | 16.20 |
+| Texto secundario sobre fondo de página | 9.46 |
+| «Ahora» sobre su fondo | 7.80 |
+| «Pronto» sobre su fondo | 7.10 |
+| «Para saber» sobre su fondo | 7.51 |
+| Blanco sobre botón principal | 8.09 |
+| Borde de control sobre fondo de página | 4.65 |
+
+Todo el texto supera 7:1 (AAA); los bordes de control superan 3:1.
+
+### App shell (RNF-02: < 8 MB)
+
+| Métrica | Valor |
+|---|---|
+| Precache del service worker | **433.02 KiB** en 11 entradas |
+| `dist/` completo | 474 KiB (en disco) |
+| `assets/index-*.js` | 423.43 kB (131.14 kB con gzip) |
+| `assets/index-*.css` | 12.36 kB |
+
+**Resultado: RNF-02 se cumple — 433.02 KiB frente a 8 MB.** Crece 45 KiB
+respecto a la Fase 3 (design system, íconos, textos y los tres módulos nuevos
+del dominio).
+
+### Suite
+
+- `pnpm lint && pnpm typecheck && pnpm test && pnpm test:arch && pnpm build`
+  en verde, **tras borrar todos los `dist/` y `*.tsbuildinfo`**.
+- **371 tests unitarios en 41 archivos** y **18 E2E**.
+- Cobertura del dominio: sentencias 98.13%, ramas 90.21%, funciones 99.56%,
+  líneas 98.51%.
+- Simulación de 120 días con un escenario *what-if*: dentro del presupuesto de
+  50 ms del test (`Simulator.test.ts`).
+
+### Lo que esta fase **no** midió
+
+- La revisión en el dispositivo de referencia, que no existe todavía, ni en el
+  Redmi Note 14: es acción humana y está pendiente.
+- Legibilidad real bajo el sol. El contraste calculado es una condición
+  necesaria, no una prueba.
+
+---
+
 ## Pendiente: prueba en teléfono (acción humana)
 
 CLAUDE.md §19 la asigna al equipo y §16 prohíbe simularla.
@@ -236,6 +304,9 @@ CLAUDE.md §19 la asigna al equipo y §16 prohíbe simularla.
 5. Completar el ciclo: crear parcela → empezar campaña → tomar foto → ver el
    estado del gemelo.
 6. Fase 2: guardar una copia, borrar todo, y restaurarla desde el archivo.
+7. Fase 4: al aire libre, leer el TwinBoard; tocar «Regué hoy»; hacer las tres
+   preguntas «¿Y si…?»; pedir a alguien que no conoce la app que lea una
+   recomendación y diga qué haría.
 
 ### Tabla a rellenar
 
@@ -252,6 +323,11 @@ CLAUDE.md §19 la asigna al equipo y §16 prohíbe simularla.
 | Chrome concede almacenamiento persistente | `TODO` | `TODO` |
 | Guardar copia: el archivo llega a Descargas | `TODO` | `TODO` |
 | Restaurar copia desde el archivo | `TODO` | `TODO` |
+| Fase 4: el TwinBoard se lee al sol, sin sombra | `TODO` | `TODO` |
+| Fase 4: los botones se aciertan con el pulgar, con una mano | `TODO` | `TODO` |
+| Fase 4: «Regué hoy» aparece en el historial | `TODO` | `TODO` |
+| Fase 4: las tres preguntas «¿Y si…?» responden | `TODO` | `TODO` |
+| Fase 4: un agricultor entiende una recomendación sin ayuda | `TODO` | `TODO` |
 | RNF-05: arranque en frío < 3 s | no aplica (gama media) | `TODO` |
 
 - **Fecha:** `TODO`

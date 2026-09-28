@@ -177,7 +177,15 @@ código implementa la ecuación que dice implementar.
 
 ## 4. Pendiente de revisión agronómica (CLAUDE.md §19)
 
-Nueve entradas. Ninguna tiene fuente verificada y todas reducen la confianza.
+**Diecisiete entradas de 25: diez provisionales y siete ausentes.** Ninguna
+tiene fuente verificada; las provisionales reducen la confianza y las ausentes
+apagan el modelo que las necesita. La lista la comprueba
+`potato.test.ts`, así que este número no puede quedar desactualizado sin que
+falle un test.
+
+> **Corrección (Fase 4).** Hasta la Fase 3 este apartado decía «nueve» y
+> CLAUDE.md «doce»; el archivo tenía en realidad **quince**. La Fase 4 añade
+> dos (`irrigationRefillFraction`, `fungicideProtectionDays`).
 
 ### 4.1 Provisionales (tienen valor, pero no verificado para aquí)
 

@@ -372,6 +372,7 @@ Un ADR por decisión, en `docs/adr/`, con estados `Propuesta`, `Aceptada`,
 | 0007 | Imágenes en OPFS con índice en IndexedDB y retención en el dominio | Aceptada |
 | 0008 | Respaldo como JSON versionado con miniaturas, sin originales | Aceptada |
 | 0009 | Tizón tardío con el modelo de Wallin (1962); datos de entrada declarados como el eslabón débil | Aceptada |
+| 0010 | Simulator y Advisor sobre el mismo motor, sin agronomía propia | Aceptada |
 
 Nuevos ADR esperados: estrategia de cifrado en reposo (Fase 7) y cualquier
 renegociación de RNF.
@@ -382,18 +383,18 @@ renegociación de RNF.
 
 | ID | Riesgo | Severidad | Fase | Estado |
 |----|--------|-----------|------|--------|
-| R-01 | Sin fuente fiable de datos climáticos | Crítica | 0→3 | **Activo.** Los tres adaptadores existen y funcionan, pero SENAMHI no ha llegado: se corre sobre un fixture `SYNTHETIC` con procedencia propia y confianza 0.1, y la pantalla lo advierte. Ningún resultado agronómico es válido hasta sustituir el archivo |
+| R-01 | Sin fuente fiable de datos climáticos | Crítica | 0→3 | **Activo.** Los tres adaptadores existen y funcionan, pero SENAMHI no ha llegado: se corre sobre un fixture `SYNTHETIC` con procedencia propia y confianza 0.1, y la pantalla lo advierte. Desde la Fase 4 el riesgo es mayor: los escenarios proyectan el futuro **solo** con normales, y el Advisor degrada y etiqueta toda recomendación de agua. Ningún resultado agronómico es válido hasta sustituir el archivo |
 | R-02 | HTTPS en LAN / contenido mixto | Crítica | 0→6 | Spike verde en escritorio; **pendiente prueba en teléfono** |
 | R-03 | ORT Web no entrena | Crítica | — | Resuelto por ADR-0005 |
 | R-04 | Multihilo WASM exige COOP/COEP | Alta | 5, 7 | Línea base single-thread; el hub emite COOP/COEP y en escritorio habilita SAB |
 | R-05 | Android 8–9 congelado en Chrome 138 | Alta | 0 | Resuelto en restricción 4 |
-| R-06 | Peso de ONNX Runtime Web vs. RNF-02 | Alta | 5 | RNF-02 ya excluye el runtime. Línea base Fase 2: 363.37 KiB de 8 MB |
+| R-06 | Peso de ONNX Runtime Web vs. RNF-02 | Alta | 5 | RNF-02 ya excluye el runtime. Línea base Fase 4: 433.02 KiB de 8 MB |
 | R-07 | Desalojo de almacenamiento | Alta | 2, 7 | **Mitigado en Fase 2:** `storage.persist()` en el onboarding, retención de originales (ADR-0007) y respaldo a archivo (ADR-0008). Queda la prueba de recuperación ante desalojo simulado (Fase 7) |
 | R-08 | Origen de la clave de cifrado sin cuenta | Media | 7 | Clave no exportable + PIN opcional |
 | R-09 | Demo federada sin ganancia estadística | Media | 6 | Reencuadrado en alcance |
 | R-10 | Flower incompatible con navegador | Media | — | Resuelto por ADR-0006 |
 | R-11 | Sesgo de fondo de PlantVillage | Media | 5 | PlantDoc + augmentación + evaluación de campo |
-| R-12 | Coeficientes sin fuente | Media | 3 | **Mitigado con mecanismo, pendiente de datos.** `source` obligatorio y verificado por test; sin verificar ⇒ baja la confianza; ausente ⇒ el modelo se niega a calcular. **12 de 23 coeficientes siguen pendientes de revisión agronómica** (`docs/agronomy/sources.md` §4) |
+| R-12 | Coeficientes sin fuente | Media | 3 | **Mitigado con mecanismo, pendiente de datos.** `source` obligatorio y verificado por test; sin verificar ⇒ baja la confianza; ausente ⇒ el modelo se niega a calcular. **17 de 25 coeficientes siguen pendientes de revisión agronómica** (`docs/agronomy/sources.md` §4; la cifra «12 de 23» anterior estaba mal contada: eran 15). La Fase 4 añadió dos: el riego (provisional) y la protección del fungicida (ausente, apaga ese escenario) |
 | R-13 | Lógica agronómica filtrándose a React | Baja | 0 | Mitigado: `pnpm test:arch` lo verifica en CI |
 
 Actualiza la columna Estado al cerrar cada fase.
@@ -518,10 +519,17 @@ justificación en lenguaje llano, panel del gemelo con línea de tiempo, design
 system (botones grandes, alto contraste, íconos, `i18n/es.ts`).
 
 **DoD:**
-- [ ] Tests de cada escenario *what-if* del apartado 8.3.
-- [ ] Tests del Advisor, incluida la degradación por baja confianza.
-- [ ] Cero violaciones críticas de axe en los flujos principales.
+- [x] Tests de cada escenario *what-if* del apartado 8.3.
+      `Simulator.test.ts` y `SimulateScenario.test.ts`. El de fungicida se
+      prueba con coeficientes y clima de prueba: en la app real está
+      **apagado** (sin humedad foliar ni duración de la protección).
+- [x] Tests del Advisor, incluida la degradación por baja confianza.
+      `Advisor.test.ts` y `AdviseCampaign.test.ts`.
+- [x] Cero violaciones críticas de axe en los flujos principales.
+      `e2e/accessibility.spec.ts`, 10 pantallas con datos; falla también con
+      las **serias**.
 - [ ] Revisión en el dispositivo de referencia (acción humana; registrar).
+      Pendiente, igual que en el Redmi Note 14. Tabla en `measurements.md`.
 
 ### Fase 5 — Inferencia real y pipeline ML
 
@@ -676,9 +684,66 @@ Cuando una fase las necesite, pídelas explícitamente y no las simules.
 
 > Mantenida por Claude Code. Actualizar al cerrar cada fase.
 
-**Fase actual:** 3 — BehaviorEngine. Implementada y verificada en la rama local
-`fase/3-behavior-engine`; pendiente de tu confirmación para el merge a `main` y
-la etiqueta `fase-3`. La Fase 4 no empieza sin confirmación explícita.
+**Fase actual:** 4 — Simulator, Advisor y TwinBoard. Implementada y verificada
+en la rama local `fase/4-simulator-advisor`; pendiente de tu confirmación para
+el merge a `main` y la etiqueta `fase-4`. La Fase 5 no empieza sin
+confirmación explícita.
+
+**Fase 4 — cierre (2026-09-28)**
+
+El gemelo deja de solo describir el presente: proyecta, responde las tres
+preguntas *what-if* de §8.3 y convierte todo en una lista priorizada de
+recomendaciones en español llano, en un panel pensado para leerse al sol.
+
+La Fase 3 se fusionó a `main` y se publicó con la etiqueta `fase-3` al abrir
+esta fase: tu «Continúa» se tomó como aprobación del merge y de D1–D5.
+
+DoD verificado ejecutando comandos, **tras borrar `dist/` y `*.tsbuildinfo`**:
+
+- `pnpm lint && pnpm typecheck && pnpm test && pnpm test:arch && pnpm build` en verde.
+- **371 tests unitarios en 41 archivos** (eran 295) y **18 E2E** (eran 13).
+- Cobertura del dominio: sentencias 98.13%, ramas **90.21%**, funciones
+  99.56%, líneas 98.51%.
+- axe: 0 violaciones críticas y 0 serias en 10 pantallas con datos.
+- App shell: **433.02 KiB** de precache frente a los 8 MB de RNF-02.
+
+**Decisiones cerradas (Fase 4):**
+
+- **D1** Cosecha: por tiempo térmico cuando exista `gddToMaturity`; mientras
+  tanto, siembra + 130 días de FAO-56, presentada como «fecha aproximada».
+- **D2** Fungicida: escenario completo en el dominio, `fungicideProtectionDays`
+  en `null`. En la app se niega a responder y dice por qué.
+- **D3** Riego: «regué» repone `irrigationRefillFraction` (1.0, provisional)
+  del agotamiento. Un día, no una cantidad.
+- **D4** axe falla también con violaciones serias.
+- **D5** Íconos SVG propios; sin dependencia nueva de íconos.
+- Simulator y Advisor no tienen agronomía propia (ADR-0010).
+- Por debajo de 0.6 de confianza una recomendación baja un nivel, lo dice y
+  nombra por qué. Nunca se descarta.
+- El texto al agricultor vive solo en `i18n/es.ts`; el dominio devuelve
+  códigos y hechos. Fechas como en el Perú: «20 de setiembre».
+- Un tema claro único con texto a 7:1 como mínimo; la urgencia es siempre
+  color + ícono + palabra.
+- Zustand sigue sin instalarse: el estado de pantalla sigue cabiendo en
+  `useState`.
+
+**Defectos de la Fase 3 encontrados y corregidos:**
+
+- **Las respuestas de clima no entraban en el respaldo y «Borrar todo» no las
+  borraba.** Corregido con el formato de respaldo **v2**, que sigue leyendo v1
+  (ADR-0008 actualizado).
+- **Nada podía registrar un riego**, así que el balance hídrico solo secaba el
+  suelo. Resuelto con el caso de uso de riego y la tabla Dexie v4.
+- **Conteo de coeficientes pendientes mal hecho:** eran 15 de 23, no 12. Ahora
+  17 de 25, verificado por test.
+
+**Desviaciones (Fase 4):**
+
+- `GetCampaignTimeline` devuelve además `events` (fotos, riegos y clima): la
+  mezcla es del dominio, no de React.
+- El respaldo pasa a v2 dentro de esta fase, que no la tenía en el plan.
+- Sigue abierta la **contradicción §9 vs §3/§18** sobre el
+  `CachedNetworkWeatherAdapter`. Requiere decisión tuya.
 
 **Fase 3 — cierre (2026-09-22)**
 
@@ -942,13 +1007,20 @@ clave privada del hub no ha entrado nunca al repositorio.
       inventados. Sustituir ese archivo es el único cambio necesario: nada del
       código depende de que sea sintético salvo la etiqueta. **Hasta entonces
       ningún resultado agronómico es presentable.**
-- [ ] **Revisión agronómica de doce coeficientes** (`docs/agronomy/sources.md`
+- [ ] **Revisión agronómica de diecisiete coeficientes** (`docs/agronomy/sources.md`
       §4). Los cuatro que más desbloquean son los umbrales de tiempo térmico
       (`gddToEmergence`, `gddToTuberInitiation`, `gddToBulking`,
-      `gddToMaturity`): con ellos y su fuente, la fenología se enciende sin
-      tocar código.
+      `gddToMaturity`): con ellos y su fuente, la fenología se enciende y la
+      fecha de cosecha pasa al reloj térmico, sin tocar código. Después,
+      `fungicideProtectionDays`, que enciende el escenario de fungicida en
+      cuanto haya también humedad foliar.
 - [ ] **(Fase 2)** Probar en el Redmi Note 14: almacenamiento persistente
       concedido, guardar copia a Descargas y restaurarla. Tabla en
+      `docs/nfr/measurements.md`.
+- [ ] **(Fase 4)** Revisar el TwinBoard en el Redmi Note 14 **al aire libre**:
+      legibilidad al sol, uso con una mano, «Regué hoy», las tres preguntas, y
+      si alguien que no conoce la app entiende una recomendación. Es el único
+      punto del DoD de la Fase 4 sin cumplir. Tabla en
       `docs/nfr/measurements.md`.
 - [x] Licencia del repositorio: MIT (2026-09-21). Queda por verificar la
       licencia de uso de los datasets, que es una tarea distinta (§19).
