@@ -56,6 +56,8 @@ export default defineConfig({
       },
     }),
   ],
+  // The inference worker imports ES modules (ONNX Runtime, the infrastructure).
+  worker: { format: 'es' },
   build: {
     // The reference device is a low-end Android 10+ phone with current Chrome;
     // Android 8-9 is frozen at Chrome 138. Nothing newer than that baseline.

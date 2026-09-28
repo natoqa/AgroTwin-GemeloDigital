@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ChangeEvent } from 'react';
+import { ModelUnavailableError } from '@agrotwin/domain';
 import type { Campaign, Plot, TwinSnapshot } from '@agrotwin/domain';
 import { useContainer } from '../../composition/ContainerContext';
 import { es } from '../../i18n/es';
@@ -7,6 +8,7 @@ import { Banner } from '../../ui/Card';
 import { Field } from '../../ui/Field';
 import { Icon } from '../../ui/Icon';
 import { Screen } from '../../ui/Screen';
+import { ModelDownload } from '../model/ModelDownload';
 
 /**
  * Takes the photograph and turns it into a snapshot.
@@ -34,6 +36,9 @@ export function CaptureScreen({
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
+  // The camera stays closed until the model is on the device: a photograph
+  // taken now could not be diagnosed, and the farmer would not know why.
+  const [modelReady, setModelReady] = useState(false);
 
   const onPick = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -49,8 +54,8 @@ export function CaptureScreen({
         ...(note.trim() === '' ? {} : { note }),
       });
       onRecorded(snapshot);
-    } catch {
-      setError(es.capture.failed);
+    } catch (cause) {
+      setError(cause instanceof ModelUnavailableError ? es.model.captureBlocked : es.capture.failed);
     } finally {
       setBusy(false);
     }
@@ -74,6 +79,10 @@ export function CaptureScreen({
         autoComplete="off"
       />
 
+      <ModelDownload quietWhenReady onReady={() => setModelReady(true)} />
+
+      {modelReady ? (
+        <>
       <label
         htmlFor="photo"
         className={[
@@ -94,6 +103,12 @@ export function CaptureScreen({
         disabled={busy}
         className="sr-only"
       />
+        </>
+      ) : (
+        <p className="text-lg" data-testid="capture-blocked">
+          {es.model.captureBlocked}
+        </p>
+      )}
 
       {busy ? (
         <p data-testid="analysing" role="status" className="text-lg font-semibold">

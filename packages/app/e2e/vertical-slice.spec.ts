@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { Server } from 'node:http';
-import { EXPECTED_LABELS, TODAY_LABEL, runSlice } from './flows.js';
+import { EXPECTED_LABELS, TODAY_LABEL, downloadModel, runSlice } from './flows.js';
 import { startStaticServer, stopStaticServer } from './staticServer.js';
 
 const PORT = 4173;
@@ -36,7 +36,8 @@ async function waitForOfflineReadiness(page: Page): Promise<void> {
           if (registration?.active?.state !== 'activated') return false;
           if (!navigator.serviceWorker.controller) return false;
 
-          const [cacheName] = await caches.keys();
+          // Workbox's precache, by name: the model has a cache of its own.
+          const cacheName = (await caches.keys()).find((name) => name.includes('precache'));
           if (!cacheName) return false;
           const cache = await caches.open(cacheName);
           // Workbox keys entries with a revision in the query string.
@@ -99,6 +100,8 @@ test.describe('vertical slice', () => {
     // Load once so the service worker installs and precaches the shell.
     await page.goto('/');
     await waitForOfflineReadiness(page);
+    // The one download the farmer does on purpose, while there is a network.
+    await downloadModel(page);
 
     // Cut the network for real: the server stops existing.
     await stopStaticServer(server as Server);

@@ -9,6 +9,7 @@ import { Banner } from '../../ui/Card';
 import { Field } from '../../ui/Field';
 import { Icon } from '../../ui/Icon';
 import { Screen, Section } from '../../ui/Screen';
+import { ModelDownload } from '../model/ModelDownload';
 import { StorageNotice } from '../onboarding/StorageNotice';
 
 /** Lists the farmer's plots and registers new ones. */
@@ -48,6 +49,7 @@ export function PlotsScreen({
   return (
     <Screen title={es.plots.title} testId="plots-screen">
       <StorageNotice onOpenBackup={onOpenBackup} />
+      <ModelDownload />
 
       {stored.length === 0 ? <p className="text-lg">{es.plots.empty}</p> : null}
       <ul data-testid="plot-list" className="flex flex-col gap-3">
