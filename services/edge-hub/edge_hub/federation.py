@@ -194,7 +194,9 @@ def check_delta(package: Package, base: Base) -> None:
         raise PackageError("no sample count")
     clip_norm, sigma = float(h.get("clipNorm", -1)), float(h.get("noiseSigma", -1))
     if not 0 < clip_norm <= MAX_CLIP_NORM or sigma < 0:
-        raise PackageError(f"clip norm {clip_norm} is outside the hub's policy (≤ {MAX_CLIP_NORM})")
+        raise PackageError(
+            f"clip norm {clip_norm} is outside the hub's policy (<= {MAX_CLIP_NORM})"
+        )
     norm = float(np.linalg.norm(package.body.astype(np.float64)))
     if norm > norm_bound(clip_norm, sigma, package.body.size):
         raise PackageError(f"norm {norm:.3f} exceeds what clipping to {clip_norm} allows")

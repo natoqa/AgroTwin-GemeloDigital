@@ -37,6 +37,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--key", type=Path, default=DEFAULT_KEY)
     parser.add_argument("--min-contributors", type=int, default=1)
     args = parser.parse_args(argv)
+    # Windows consoles default to a legacy code page; the report is Spanish.
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
 
     key = load_or_create_key(args.key)
     if args.base_model:
@@ -61,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
         print("Sin modelo: no hubo suficientes aportes válidos.", file=sys.stderr)
         return 1
     args.out.write_bytes(result.model)
-    print(f"Modelo agregado {result.head_version} → {args.out}")
+    print(f"Modelo agregado {result.head_version} -> {args.out}")
     return 0
 
 

@@ -15,7 +15,12 @@ import {
   DexieObservationRepository,
   DexiePlotRepository,
   DexieSnapshotRepository,
+  CryptoRandom,
+  DeviceCurrentModel,
+  DexieFederationSettings,
+  DexieTrainingExamples,
   LazyModelInference,
+  WebCryptoSigner,
   ModelAssets,
   NavigatorStorageAdapter,
   OpfsImageStore,
@@ -32,6 +37,11 @@ import {
   eraseAllDataUseCase,
   exportBackupUseCase,
   getCampaignTimelineUseCase,
+  getFederationStatusUseCase,
+  importAggregatedModelUseCase,
+  labelObservationUseCase,
+  prepareContributionUseCase,
+  setFederationConsentUseCase,
   importBackupUseCase,
   recordIrrigationUseCase,
   recordObservationUseCase,
@@ -93,7 +103,14 @@ export interface Container {
   readonly ensurePersistentStorage: ReturnType<typeof ensurePersistentStorageUseCase>;
   readonly exportBackup: ReturnType<typeof exportBackupUseCase>;
   readonly importBackup: ReturnType<typeof importBackupUseCase>;
-  readonly eraseAllData: ReturnType<typeof eraseAllDataUseCase>;
+  /** Everything the device holds, federated-learning state included. */
+  readonly eraseAllData: () => Promise<void>;
+  // Federated learning (CLAUDE.md §11).
+  readonly labelObservation: ReturnType<typeof labelObservationUseCase>;
+  readonly setFederationConsent: ReturnType<typeof setFederationConsentUseCase>;
+  readonly getFederationStatus: ReturnType<typeof getFederationStatusUseCase>;
+  readonly prepareContribution: ReturnType<typeof prepareContributionUseCase>;
+  readonly importAggregatedModel: ReturnType<typeof importAggregatedModelUseCase>;
 }
 
 export async function createContainer(databaseName = 'agrotwin'): Promise<Container> {
@@ -130,10 +147,40 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
     contractUrl: `${import.meta.env.BASE_URL}model/model-contract.json`,
     wasmUrl: ortWasmUrl,
   });
+  // Phase 6: an accepted federated head replaces the shipped one, and
+  // adopting it restarts the classifier so the next photograph uses it.
+  let restartClassifier = () => undefined as void;
+  const currentModel = new DeviceCurrentModel(db, model, () => restartClassifier(), () => clock.now());
   const inference = new LazyModelInference(
     model,
     () => new Worker(new URL('./embedding.worker.ts', import.meta.url), { type: 'module' }),
+    (contract) => currentModel.adoptedFor(contract),
   );
+  restartClassifier = () => inference.reset();
+
+  const trainingExamples = new DexieTrainingExamples(db);
+  const federationSettings = new DexieFederationSettings(db);
+  const federation = {
+    observations,
+    images,
+    embedder: inference,
+    examples: trainingExamples,
+    settings: federationSettings,
+    model: currentModel,
+    signer: new WebCryptoSigner(),
+    // The operating system's CSPRNG: DP noise must not be predictable.
+    random: new CryptoRandom(),
+    clock,
+  };
+  const eraseTwin = eraseAllDataUseCase({
+    plots,
+    campaigns,
+    observations,
+    snapshots,
+    images,
+    weatherObservations,
+    irrigations,
+  });
 
   return {
     plots,
@@ -224,14 +271,18 @@ export async function createContainer(databaseName = 'agrotwin'): Promise<Contai
       weatherObservations,
       irrigations,
     }),
-    eraseAllData: eraseAllDataUseCase({
-      plots,
-      campaigns,
-      observations,
-      snapshots,
-      images,
-      weatherObservations,
-      irrigations,
-    }),
+    eraseAllData: async () => {
+      await eraseTwin();
+      // The labels, the consent and any accepted head are the farmer's too.
+      await trainingExamples.deleteAll();
+      await federationSettings.deleteAll();
+      await currentModel.deleteAll();
+      inference.reset();
+    },
+    labelObservation: labelObservationUseCase(federation),
+    setFederationConsent: setFederationConsentUseCase(federation),
+    getFederationStatus: getFederationStatusUseCase(federation),
+    prepareContribution: prepareContributionUseCase(federation),
+    importAggregatedModel: importAggregatedModelUseCase(federation),
   };
 }

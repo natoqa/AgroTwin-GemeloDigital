@@ -86,4 +86,10 @@ test('the main flows have no critical or serious axe violations', async ({ page 
   await page.getByTestId('go-backup').click();
   await expect(page.getByTestId('backup-screen')).toBeVisible();
   await expectAccessible(page, 'the backup screen');
+
+  await page.getByRole('button', { name: 'Mis parcelas' }).click();
+  await page.getByTestId('go-federation').click();
+  await page.getByTestId('consent-share_and_receive').click();
+  await expect(page.getByTestId('prepare-contribution')).toBeVisible();
+  await expectAccessible(page, 'the federated-learning screen');
 });
