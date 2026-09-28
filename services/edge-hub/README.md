@@ -4,8 +4,9 @@ Hub local en LAN. **Sin salida a internet.** Agrega deltas de la cabeza
 clasificadora con FedAvg ponderado y sirve la propia PWA por HTTPS, de modo que
 página y API comparten origen (ADR-0003).
 
-> **Alcance actual: Fase 0.** Aquí solo vive el spike del riesgo R-02. FedAvg,
-> el registro de modelos y la verificación de firmas llegan en la Fase 6.
+> **Alcance actual: Fase 6 recortada.** El spike R-02 (servir la PWA por HTTPS
+> en la LAN) y una **ronda de FedAvg por archivo**, con verificación de firmas.
+> La ruta por HTTP (`LanHubTransport`) y el registro de modelos no están hechos.
 
 ## Requisitos
 
@@ -31,11 +32,37 @@ El teléfono necesita la CA de mkcert instalada. El procedimiento completo, con
 la tabla de resultados a rellenar, está en
 [`docs/spikes/r02-https-lan.md`](../../docs/spikes/r02-https-lan.md).
 
+## Una ronda de aprendizaje federado (por archivo)
+
+Cada teléfono, en *Aprendizaje compartido*, elige «Compartir y recibir
+mejoras», confirma algunas fotos y pulsa **Preparar mi aporte**: descarga un
+`.agrotwin-delta` firmado. Esos archivos llegan al hub por cable o memoria:
+
+```bash
+uv run python -m edge_hub.aggregate aportes/*.agrotwin-delta \
+    --contract ../../packages/app/public/model/model-contract.json \
+    --head ../../packages/app/public/model/head.json \
+    --out ronda-1.agrotwin-model --min-contributors 3
+```
+
+Cada aporte sale como `ACEPTADO` o `RECHAZADO` con su motivo: firma inválida,
+norma mayor de la que el recorte permite, recorte más laxo que la política del
+hub (≤ 1.0) o calculado sobre otra cabeza. Para la ronda siguiente,
+`--base-model ronda-1.agrotwin-model` en lugar de `--head`.
+
+El `.agrotwin-model` vuelve a los teléfonos, que lo cargan en la misma
+pantalla. **El teléfono decide**, no el hub: verifica la firma, exige la misma
+clave de hub que la primera vez, y lo rechaza si acierta menos de lo que
+acertaba en sus propias fotos de comprobación (más de 5 puntos).
+
+La clave del hub se genera en `certs/federation-key.pem` la primera vez.
+
 ## Comprobaciones
 
 ```bash
 uv run ruff check .
 uv run ruff format --check .
+uv run pytest -q
 ```
 
 ## Nota de seguridad

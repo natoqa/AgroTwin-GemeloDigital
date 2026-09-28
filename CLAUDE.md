@@ -373,6 +373,7 @@ Un ADR por decisión, en `docs/adr/`, con estados `Propuesta`, `Aceptada`,
 | 0008 | Respaldo como JSON versionado con miniaturas, sin originales | Aceptada |
 | 0009 | Tizón tardío con el modelo de Wallin (1962); datos de entrada declarados como el eslabón débil | Aceptada |
 | 0010 | Simulator y Advisor sobre el mismo motor, sin agronomía propia | Aceptada |
+| 0011 | Aprendizaje federado por archivo primero, clave del hub por primer uso, ruido de demostración | Aceptada |
 
 Nuevos ADR esperados: estrategia de cifrado en reposo (Fase 7) y cualquier
 renegociación de RNF.
@@ -391,7 +392,7 @@ renegociación de RNF.
 | R-06 | Peso de ONNX Runtime Web vs. RNF-02 | Alta | 5 | **Mitigado.** App shell 515.51 KiB; el WASM (14.2 MB, 3.7 MB con gzip) y el modelo quedan fuera del precache y se descargan en un paso explícito (D1) |
 | R-07 | Desalojo de almacenamiento | Alta | 2, 7 | **Mitigado en Fase 2:** `storage.persist()` en el onboarding, retención de originales (ADR-0007) y respaldo a archivo (ADR-0008). Queda la prueba de recuperación ante desalojo simulado (Fase 7) |
 | R-08 | Origen de la clave de cifrado sin cuenta | Media | 7 | Clave no exportable + PIN opcional |
-| R-09 | Demo federada sin ganancia estadística | Media | 6 | Reencuadrado en alcance |
+| R-09 | Demo federada sin ganancia estadística | Media | 6 | Reencuadrado y demostrado: el E2E prueba el protocolo y sus defensas, no una mejora de accuracy. Privacidad diferencial solo de demostración (ADR-0011) |
 | R-10 | Flower incompatible con navegador | Media | — | Resuelto por ADR-0006 |
 | R-11 | Sesgo de fondo de PlantVillage | Media | 5 | **Activo, medido.** Cambio de fondo + augmentación aplicados; aun así F1 de tizones 0.993 en laboratorio frente a 0.629 en PlantDoc. En campo el umbral acepta el 28.6 % de las fotos con 77.8 % de aciertos: no llega al 90 % de D2. Falta evaluación con fotos reales de la zona |
 | R-12 | Coeficientes sin fuente | Media | 3 | **Mitigado con mecanismo, pendiente de datos.** `source` obligatorio y verificado por test; sin verificar ⇒ baja la confianza; ausente ⇒ el modelo se niega a calcular. **17 de 25 coeficientes siguen pendientes de revisión agronómica** (`docs/agronomy/sources.md` §4; la cifra «12 de 23» anterior estaba mal contada: eran 15). La Fase 4 añadió dos: el riego (provisional) y la protección del fungicida (ausente, apaga ese escenario) |
@@ -566,15 +567,20 @@ modelos agregados, consentimiento y modo "solo recibir", `FileTransport`,
 `LanHubTransport`, hub FastAPI con FedAvg ponderado, registro de modelos y
 verificación de firmas, Docker Compose.
 
-**DoD:**
-- [ ] E2E con 3 contextos de navegador + hub: ciclo completo entrenar → enviar →
-      agregar → recibir → validar → aceptar.
-- [ ] Test: un delta con norma excesiva o firma inválida es rechazado.
-- [ ] Test: un modelo agregado que degrada el holdout local es rechazado.
-- [ ] Toda la suite E2E pasa con el hub apagado.
-- [ ] Ciclo sneakernet completo probado.
+**DoD** (fase recortada, ADR-0011):
+- [x] E2E con 3 contextos de navegador + hub: ciclo completo entrenar → enviar →
+      agregar → recibir → validar → aceptar. `e2e/federation.spec.ts`, por
+      archivo, con el hub Python real; incluye rechazar una copia alterada.
+- [x] Test: un delta con norma excesiva o firma inválida es rechazado.
+      `services/edge-hub/tests/test_federation.py`.
+- [x] Test: un modelo agregado que degrada el holdout local es rechazado.
+      `packages/domain/src/usecases/Federation.test.ts`.
+- [x] Toda la suite E2E pasa con el hub apagado. La PWA nunca contacta al hub:
+      el único transporte es por archivo.
+- [x] Ciclo sneakernet completo probado (es el mismo E2E).
 - [ ] Utilidad reportada con y sin privacidad diferencial, con σ, norma de
-      recorte y ε estimado.
+      recorte y ε estimado. **No hecho.** σ = 0.01 y C = 1.0 están
+      documentados; ε no se calculó y σ no da garantía formal (ADR-0011).
 
 ### Fase 7 — Endurecimiento
 
@@ -691,10 +697,36 @@ Cuando una fase las necesite, pídelas explícitamente y no las simules.
 
 > Mantenida por Claude Code. Actualizar al cerrar cada fase.
 
-**Fase actual:** 5 — Inferencia real y pipeline ML. Implementada y verificada
-en la rama local `fase/5-inferencia-real`; pendiente de tu confirmación para el
-merge a `main` y la etiqueta `fase-5`. La Fase 4 se fusionó y publicó
-(`fase-4`) el 2026-09-28. La Fase 6 no empieza sin confirmación explícita.
+**Fase actual:** 6 — Aprendizaje federado (**recortada**). Implementada y
+verificada en la rama local `fase/6-aprendizaje-federado`; pendiente de tu
+confirmación para el merge a `main` y la etiqueta `fase-6`. La Fase 5 se
+fusionó y publicó (`fase-5`) el 2026-09-28.
+
+**Fase 6 — cierre (2026-09-28), alcance recortado por plazo**
+
+Aprobado por el equipo: protocolo completo por archivo y el hub FedAvg; fuera
+`LanHubTransport`, el cálculo de ε y el reporte de utilidad con y sin DP.
+
+Verificado ejecutando comandos, tras borrar `dist/` y `*.tsbuildinfo`:
+
+- `pnpm lint && pnpm typecheck && pnpm test && pnpm test:arch && pnpm build` en verde.
+- **450 tests unitarios en 46 archivos**, **19 E2E** (el ciclo federado con 3
+  navegadores y el hub Python real incluido), **11 tests del hub**, 13 del
+  pipeline.
+- Cobertura del dominio: ramas 88.77%, sentencias 97.84%.
+- Interoperabilidad de firmas: el hub verifica un delta firmado por el
+  `WebCryptoSigner` real, y el cliente verifica un agregado firmado por el hub.
+
+**Decisiones (ADR-0011):** solo transporte por archivo; clave efímera por
+aporte; clave del hub fijada en el primer uso; holdout por hash del id;
+C = 1.0 y σ = 0.01, **sin garantía formal de privacidad diferencial**.
+
+**Defectos encontrados y corregidos en esta fase:**
+
+- El CI de `main` quedó en rojo tras la Fase 5: la acción `setup-uv@v10` no
+  existe (solo etiquetas completas). Corregido en `main` con `v10.2.0`; los
+  tres jobs en verde.
+- El hub fallaba en consolas Windows al imprimir «→». Salida forzada a UTF-8.
 
 **Fase 5 — cierre (2026-09-28)**
 
